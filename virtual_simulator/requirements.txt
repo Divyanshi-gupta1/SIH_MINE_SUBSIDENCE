@@ -1,0 +1,5 @@
+# virtual_simulator/ -- the web layer only. The model side (scikit-learn, pandas, numpy, joblib) comes from the
+# project's existing environment, the same one hardware_integration/ uses (../.venv).
+fastapi>=0.110
+uvicorn>=0.30
+websockets>=12      # WebSocket transport for uvicorn

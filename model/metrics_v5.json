@@ -1,0 +1,155 @@
+{
+  "dataset": "synthetic/simulated_mesh_data_v5_with_external.csv",
+  "split_timestamp": "2026-10-15 00:00:00",
+  "split_note": "fresh split re-tallied on v5 row composition; date unchanged; all 176 merged v2 rows fall in TRAIN (dated Aug 2026), test set == v4 test set",
+  "train_rows": 60540,
+  "test_rows": 43158,
+  "excluded_tail_rows": 158,
+  "merged_v2_escalation_rows_total": 176,
+  "merged_v2_rows_in_train": 176,
+  "merged_v2_rows_in_test": 0,
+  "train_class_counts": {
+    "normal": 59998,
+    "subsidence_precursor": 511,
+    "decoy_seismic": 31
+  },
+  "test_class_counts": {
+    "normal": 43017,
+    "subsidence_precursor": 121,
+    "decoy_seismic": 20
+  },
+  "features": [
+    "tilt_deg",
+    "vibration_rms",
+    "displacement_mm",
+    "crack_signal",
+    "vibration_duration",
+    "tilt_vibration_correlation",
+    "displacement_persistence",
+    "tilt_deviation_from_node_baseline"
+  ],
+  "logistic_regression": {
+    "classification_report": {
+      "normal": {
+        "precision": 0.9989078910679431,
+        "recall": 0.9993490945440174,
+        "f1-score": 0.9991284440984045,
+        "support": 43017.0
+      },
+      "decoy_seismic": {
+        "precision": 0.4166666666666667,
+        "recall": 1.0,
+        "f1-score": 0.5882352941176471,
+        "support": 20.0
+      },
+      "subsidence_precursor": {
+        "precision": 1.0,
+        "recall": 0.6115702479338843,
+        "f1-score": 0.7589743589743589,
+        "support": 121.0
+      },
+      "accuracy": 0.9982621993604893,
+      "macro avg": {
+        "precision": 0.80519151924487,
+        "recall": 0.870306447492634,
+        "f1-score": 0.7821126990634703,
+        "support": 43158.0
+      },
+      "weighted avg": {
+        "precision": 0.9986411345151083,
+        "recall": 0.9982621993604893,
+        "f1-score": 0.9982647222554177,
+        "support": 43158.0
+      }
+    },
+    "confusion_matrix": [
+      [
+        42989,
+        28,
+        0
+      ],
+      [
+        0,
+        20,
+        0
+      ],
+      [
+        47,
+        0,
+        74
+      ]
+    ],
+    "class_order": [
+      "normal",
+      "decoy_seismic",
+      "subsidence_precursor"
+    ]
+  },
+  "random_forest": {
+    "classification_report": {
+      "normal": {
+        "precision": 0.9986997910378453,
+        "recall": 0.9999302601297162,
+        "f1-score": 0.9993146468107844,
+        "support": 43017.0
+      },
+      "decoy_seismic": {
+        "precision": 0.8571428571428571,
+        "recall": 0.9,
+        "f1-score": 0.8780487804878049,
+        "support": 20.0
+      },
+      "subsidence_precursor": {
+        "precision": 1.0,
+        "recall": 0.5537190082644629,
+        "f1-score": 0.7127659574468085,
+        "support": 121.0
+      },
+      "accuracy": 0.998632930163585,
+      "macro avg": {
+        "precision": 0.9519475493935675,
+        "recall": 0.8178830894647264,
+        "f1-score": 0.8633764615817993,
+        "support": 43158.0
+      },
+      "weighted avg": {
+        "precision": 0.998637836976177,
+        "recall": 0.998632930163585,
+        "f1-score": 0.9984550678511593,
+        "support": 43158.0
+      }
+    },
+    "confusion_matrix": [
+      [
+        43014,
+        3,
+        0
+      ],
+      [
+        2,
+        18,
+        0
+      ],
+      [
+        54,
+        0,
+        67
+      ]
+    ],
+    "class_order": [
+      "normal",
+      "decoy_seismic",
+      "subsidence_precursor"
+    ],
+    "feature_importances": {
+      "tilt_deviation_from_node_baseline": 0.2975625944018621,
+      "vibration_duration": 0.2306120457842916,
+      "vibration_rms": 0.19986833691963377,
+      "tilt_vibration_correlation": 0.11379057897117763,
+      "displacement_mm": 0.06262908586858225,
+      "tilt_deg": 0.04293938629683601,
+      "displacement_persistence": 0.03818198404782804,
+      "crack_signal": 0.014415987709788644
+    }
+  }
+}

@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>TeraSense Live Demo</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="topbar">
+  <h1 class="brand">
+    <svg class="brand-mark" viewBox="0 0 28 28" aria-hidden="true">
+      <path d="M2 9h24" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      <path d="M2 15h9l3 6 3-6h9" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" opacity=".55"/>
+      <circle cx="14" cy="9" r="2.6" fill="currentColor"/>
+    </svg>
+    <span class="brand-name">TeraSense</span>
+    <span class="brand-divider" aria-hidden="true"></span>
+    <span class="brand-sub">Live Demo</span>
+  </h1>
+
+  <div class="topbar-right">
+    <span class="chip chip-sim" title="No real sensors are connected. Values come from the sliders and presets, converted to raw sensor counts and run through the hardware_integration pipeline.">Virtual simulator, no real hardware</span>
+    <div class="clock" title="Simulated time since start">
+      <span class="clock-label">Sim time</span>
+      <span class="clock-value" id="clock">00:00</span>
+    </div>
+    <div class="segmented" role="group" aria-label="Simulation speed" id="speed">
+      <button type="button" data-speed="1" aria-pressed="true">1x</button>
+      <button type="button" data-speed="2" aria-pressed="false">2x</button>
+      <button type="button" data-speed="4" aria-pressed="false">4x</button>
+    </div>
+    <span class="conn" id="conn" data-state="connecting" role="status"><i></i><span>Connecting</span></span>
+  </div>
+</header>
+
+<main class="layout">
+
+  <!-- ============ left: the ground + controls ============ -->
+  <div class="col-main">
+
+    <section class="panel scene-panel" aria-labelledby="scene-title">
+      <div class="panel-head">
+        <h2 id="scene-title">Mine cross-section</h2>
+        <p class="hint">Side view. Movement is exaggerated so it shows: tilt x2, sinking 1.2 px per mm.</p>
+      </div>
+      <div class="scene" id="scene">
+        <div class="sky"></div>
+        <div class="crack-backdrop"></div>
+        <div class="zones" id="zones">
+          <div class="zone" data-node="1">
+            <div class="zone-rock"></div>
+            <button type="button" class="node-dot" data-node="1" aria-label="Select node N1"><span>N1</span></button>
+            <div class="zone-face"><b>Zone 1</b><span class="zone-readout" data-readout="1">0.0&deg; tilt, 0 mm down</span></div>
+          </div>
+          <div class="zone" data-node="2">
+            <div class="zone-rock"></div>
+            <button type="button" class="node-dot" data-node="2" aria-label="Select node N2"><span>N2</span></button>
+            <div class="zone-face"><b>Zone 2</b><span class="zone-readout" data-readout="2">0.0&deg; tilt, 0 mm down</span></div>
+          </div>
+          <div class="zone" data-node="3">
+            <div class="zone-rock"></div>
+            <img class="house" src="assets/house.svg" alt="House on Zone 3" width="72" height="64">
+            <button type="button" class="node-dot" data-node="3" aria-label="Select node N3"><span>N3</span></button>
+            <div class="zone-face"><b>Zone 3</b><span class="zone-readout" data-readout="3">0.0&deg; tilt, 0 mm down</span></div>
+          </div>
+        </div>
+        <div class="seam" aria-hidden="true">
+          <span class="pillar"></span><span class="pillar"></span><span class="pillar"></span><span class="pillar"></span>
+          <em>Mined-out seam</em>
+        </div>
+        <div class="bedrock" aria-hidden="true"></div>
+      </div>
+    </section>
+
+    <section class="panel controls-panel" aria-labelledby="controls-title">
+      <div class="panel-head">
+        <h2 id="controls-title">Controls</h2>
+        <div class="presets" role="group" aria-label="Presets">
+          <button type="button" class="btn" data-preset="normal">Normal</button>
+          <button type="button" class="btn" data-preset="vibration_only">Vibration only</button>
+          <button type="button" class="btn btn-primary" data-preset="full_progression">Full progression</button>
+          <button type="button" class="btn btn-quiet" data-preset="reset" title="Clear alerts and graphs and restart the model from a fresh calibration">Reset</button>
+        </div>
+      </div>
+      <div class="script-status" id="script-status" hidden>
+        <span id="script-label"></span>
+        <div class="progress" aria-hidden="true"><i id="script-bar"></i></div>
+      </div>
+      <div class="node-controls" id="node-controls"><!-- built by main.js --></div>
+      <p class="hint controls-note">Vibration is the extra vibration on top of a quiet node, in the model's g scale. Sliders take over from a running preset.</p>
+    </section>
+
+    <section class="panel" aria-labelledby="map-title">
+      <div class="panel-head"><h2 id="map-title">Zone map</h2><span class="hint">Top view</span></div>
+      <div class="map" id="map">
+        <div class="map-zone" data-node="1"><span>Zone 1</span><button type="button" class="map-dot" data-node="1" aria-label="Select node N1">N1</button></div>
+        <div class="map-zone" data-node="2"><span>Zone 2</span><button type="button" class="map-dot" data-node="2" aria-label="Select node N2">N2</button></div>
+        <div class="map-zone" data-node="3"><span>Zone 3</span><button type="button" class="map-dot" data-node="3" aria-label="Select node N3">N3</button>
+          <svg class="map-house" viewBox="0 0 20 18" aria-hidden="true"><path d="M1 9 10 1l9 8h-3v8H4V9z" fill="currentColor"/></svg>
+        </div>
+      </div>
+      <ul class="legend" aria-label="Colour key">
+        <li><i class="lg lg-normal"></i>Normal</li>
+        <li><i class="lg lg-warning"></i>Anomaly (vibration only or possible)</li>
+        <li><i class="lg lg-critical"></i>High risk, alert confirmed</li>
+      </ul>
+    </section>
+  </div>
+
+  <!-- ============ right: readouts ============ -->
+  <div class="col-side">
+
+    <section class="panel" aria-labelledby="health-title">
+      <div class="panel-head"><h2 id="health-title">Node health</h2></div>
+      <div class="health" id="health"><!-- built by main.js --></div>
+    </section>
+
+    <section class="panel alerts-panel" aria-labelledby="alerts-title">
+      <div class="panel-head">
+        <h2 id="alerts-title">Active alerts</h2>
+        <span class="count" id="alert-count" data-active="0">None active</span>
+      </div>
+      <ol class="alerts" id="alerts" aria-live="polite"></ol>
+    </section>
+
+    <section class="panel detail-panel" aria-labelledby="detail-title" id="detail">
+      <div class="panel-head">
+        <h2 id="detail-title">Node detail</h2>
+        <div class="segmented" role="group" aria-label="Node" id="detail-tabs">
+          <button type="button" data-node="1" aria-pressed="true">N1</button>
+          <button type="button" data-node="2" aria-pressed="false">N2</button>
+          <button type="button" data-node="3" aria-pressed="false">N3</button>
+        </div>
+      </div>
+      <div id="detail-body"><!-- built by main.js --></div>
+    </section>
+
+  </div>
+
+  <!-- ============ bottom: live graphs ============ -->
+  <section class="panel graphs-panel" aria-labelledby="graphs-title">
+    <div class="panel-head">
+      <h2 id="graphs-title">Live sensor readings</h2>
+      <span class="hint">Last 60 s of simulated time, one point per 2 s model sample, after unit conversion</span>
+    </div>
+    <div class="graphs">
+      <figure class="graph"><figcaption><b>Tilt</b><span class="unit">degrees</span><span class="now" data-now="tilt"></span></figcaption><canvas data-chart="tilt" role="img" aria-label="Tilt of nodes N1, N2 and N3 over the last 60 seconds"></canvas></figure>
+      <figure class="graph"><figcaption><b>Vibration</b><span class="unit">g, model scale</span><span class="now" data-now="vib"></span></figcaption><canvas data-chart="vib" role="img" aria-label="Vibration of nodes N1, N2 and N3 over the last 60 seconds"></canvas></figure>
+      <figure class="graph"><figcaption><b>Displacement</b><span class="unit">mm</span><span class="now" data-now="disp"></span></figcaption><canvas data-chart="disp" role="img" aria-label="Displacement of nodes N1, N2 and N3 over the last 60 seconds"></canvas></figure>
+    </div>
+  </section>
+</main>
+
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+<script src="main.js"></script>
+</body>
+</html>

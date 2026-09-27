@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 72 64" width="72" height="64" role="img" aria-label="House on Zone 3">
+  <rect x="10" y="26" width="52" height="34" fill="#d8cdb9"/>
+  <rect x="10" y="26" width="52" height="34" fill="none" stroke="#8d8270" stroke-width="1.5"/>
+  <polygon points="4,28 36,4 68,28" fill="#a4453b" stroke="#6f2c26" stroke-width="1.5" stroke-linejoin="round"/>
+  <rect x="49" y="8" width="7" height="14" fill="#8d8270" stroke="#6b6253" stroke-width="1"/>
+  <rect x="30" y="40" width="12" height="20" fill="#5a4636"/>
+  <circle cx="39" cy="51" r="1" fill="#e8d9a8"/>
+  <rect x="15" y="34" width="11" height="11" fill="#8fb4cf" stroke="#5e7a8c" stroke-width="1.2"/>
+  <line x1="20.5" y1="34" x2="20.5" y2="45" stroke="#5e7a8c" stroke-width="1"/>
+  <line x1="15" y1="39.5" x2="26" y2="39.5" stroke="#5e7a8c" stroke-width="1"/>
+  <rect x="46" y="34" width="11" height="11" fill="#8fb4cf" stroke="#5e7a8c" stroke-width="1.2"/>
+  <line x1="51.5" y1="34" x2="51.5" y2="45" stroke="#5e7a8c" stroke-width="1"/>
+  <line x1="46" y1="39.5" x2="57" y2="39.5" stroke="#5e7a8c" stroke-width="1"/>
+</svg>

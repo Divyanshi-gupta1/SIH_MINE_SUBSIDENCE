@@ -1,0 +1,5 @@
+{
+  "accel_units": "g",
+  "gyro_units": "dps",
+  "dist_unit": "us"
+}

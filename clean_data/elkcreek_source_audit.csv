@@ -1,0 +1,108 @@
+file,sheet,header_row,rows,n_cols,date_col,start_date,end_date
+events/rocksigma_events/2010-07_rocksigma.parquet,,0.0,2229,33,Date,2010-07-05 06:50:38.692000000,2010-07-31 20:51:16.123000000
+events/rocksigma_events/2010-08_rocksigma.parquet,,0.0,5565,33,Date,2010-08-01 00:48:15.515000000,2010-08-31 23:59:20.247000000
+events/rocksigma_events/2010-09_rocksigma.parquet,,0.0,12727,33,Date,2010-09-01 00:04:46.217000000,2010-09-30 23:59:51.848000000
+events/rocksigma_events/2010-10_rocksigma.parquet,,0.0,24774,33,Date,2010-10-01 00:01:29.169000000,2010-10-31 23:59:10.622000000
+events/rocksigma_events/2010-11_rocksigma.parquet,,0.0,32858,33,Date,2010-11-01 00:00:59.473000000,2010-11-30 23:59:25.805000000
+events/rocksigma_events/2010-12_rocksigma.parquet,,0.0,39161,33,Date,2010-12-01 00:01:00.375000000,2010-12-31 23:58:58.337000000
+events/rocksigma_events/2011-01_rocksigma.parquet,,0.0,82310,33,Date,2011-01-01 00:00:02.496000000,2011-01-31 23:58:05.896000000
+events/rocksigma_events/2011-02_rocksigma.parquet,,0.0,55705,33,Date,2011-02-01 00:00:44.459000000,2011-02-28 23:59:09.159000000
+events/rocksigma_events/2011-03_rocksigma.parquet,,0.0,29366,33,Date,2011-03-01 00:03:18.779000000,2011-03-31 23:57:09.566000000
+events/rocksigma_events/2011-04_rocksigma.parquet,,0.0,45243,33,Date,2011-04-01 00:02:43.360000000,2011-04-30 23:59:52.277000000
+events/rocksigma_events/2011-05_rocksigma.parquet,,0.0,39806,33,Date,2011-05-01 00:00:47.895000000,2011-05-31 23:55:31.570000000
+events/rocksigma_events/2011-06_rocksigma.parquet,,0.0,11675,33,Date,2011-06-01 00:09:23.216000000,2011-06-30 23:47:52.603000000
+events/rocksigma_events/2011-07_rocksigma.parquet,,0.0,13258,33,Date,2011-07-01 00:00:43.569000000,2011-07-31 23:58:27.834000000
+events/rocksigma_events/2011-08_rocksigma.parquet,,0.0,31221,33,Date,2011-08-01 00:02:19.763000000,2011-08-31 23:58:20.087000000
+events/rocksigma_events/2011-09_rocksigma.parquet,,0.0,41694,33,Date,2011-09-01 00:02:24.729000000,2011-09-30 23:59:55.357000000
+events/rocksigma_events/2011-10_rocksigma.parquet,,0.0,31263,33,Date,2011-10-01 00:00:06.336000000,2011-10-31 23:55:59.745000000
+events/rocksigma_events/2011-11_rocksigma.parquet,,0.0,19529,33,Date,2011-11-01 00:01:23.819000000,2011-11-30 23:48:07.489000000
+events/rocksigma_events/2011-12_rocksigma.parquet,,0.0,20294,33,Date,2011-12-01 00:00:04.246000000,2011-12-31 23:51:30.894000000
+events/rocksigma_events/2012-01_rocksigma.parquet,,0.0,18471,33,Date,2012-01-01 00:01:19.227000000,2012-01-31 23:59:13.509000000
+events/rocksigma_events/2012-02_rocksigma.parquet,,0.0,31618,33,Date,2012-02-01 00:04:06.963000000,2012-02-29 23:58:34.565000000
+events/rocksigma_events/2012-03_rocksigma.parquet,,0.0,57399,33,Date,2012-03-01 00:01:21.460000000,2012-03-31 23:59:34.664000000
+events/rocksigma_events/2012-04_rocksigma.parquet,,0.0,50892,33,Date,2012-04-01 00:01:49.130000000,2012-04-30 23:59:07.912000000
+events/rocksigma_events/2012-05_rocksigma.parquet,,0.0,16230,33,Date,2012-05-01 00:01:37.056000000,2012-05-31 23:58:51.210000000
+events/rocksigma_events/2012-06_rocksigma.parquet,,0.0,11893,33,Date,2012-06-01 00:01:24.209000000,2012-06-30 23:59:24.863000000
+events/rocksigma_events/2012-07_rocksigma.parquet,,0.0,25386,33,Date,2012-07-01 00:00:22.723000000,2012-07-31 23:59:25.536000000
+events/rocksigma_events/2012-08_rocksigma.parquet,,0.0,32648,33,Date,2012-08-01 00:08:32.712000000,2012-08-31 23:59:39.534000000
+events/rocksigma_events/2012-09_rocksigma.parquet,,0.0,22016,33,Date,2012-09-01 00:01:31.786000000,2012-09-30 23:59:47.213000000
+events/rocksigma_events/2012-10_rocksigma.parquet,,0.0,62116,33,Date,2012-10-01 00:01:00.609000000,2012-10-31 23:59:51.291000000
+events/rocksigma_events/2012-11_rocksigma.parquet,,0.0,53917,33,Date,2012-11-01 00:01:16.456000000,2012-11-30 23:59:28.578000000
+events/rocksigma_events/2012-12_rocksigma.parquet,,0.0,21243,33,Date,2012-12-01 00:00:14.050000000,2012-12-31 23:53:55.165000000
+events/rocksigma_events/2013-01_rocksigma.parquet,,0.0,6885,33,Date,2013-01-01 00:08:45.920000000,2013-01-31 23:59:26.628000000
+events/rocksigma_events/2013-02_rocksigma.parquet,,0.0,6170,33,Date,2013-02-01 00:03:14.347000000,2013-02-28 23:34:24.079000000
+events/ims_events/2009-11_ims.parquet,,0.0,2002,30,Date,2009-11-07 05:16:54.638000000,2009-11-30 22:02:45.298000000
+events/ims_events/2009-12_ims.parquet,,0.0,3431,30,Date,2009-12-01 00:15:25.470000000,2009-12-31 23:30:59.269000000
+events/ims_events/2010-01_ims.parquet,,0.0,6548,30,Date,2010-01-01 00:09:51.497000000,2010-01-31 23:59:01.689000000
+events/ims_events/2010-02_ims.parquet,,0.0,8971,30,Date,2010-02-01 00:03:04.279000000,2010-02-28 23:21:34.617000000
+events/ims_events/2010-03_ims.parquet,,0.0,5925,30,Date,2010-03-01 00:29:26.654000000,2010-03-31 22:55:30.590000000
+events/ims_events/2010-04_ims.parquet,,0.0,2829,30,Date,2010-04-01 01:19:47.592000000,2010-04-29 21:23:45.715000000
+events/ims_events/2010-05_ims.parquet,,0.0,805,30,Date,2010-05-03 11:09:01.908000000,2010-05-31 23:29:48.433000000
+events/ims_events/2010-06_ims.parquet,,0.0,757,30,Date,2010-06-01 00:10:43.376000000,2010-06-30 01:04:32.262000000
+events/ims_events/2010-07_ims.parquet,,0.0,609,30,Date,2010-07-05 07:08:23.514000000,2010-07-30 14:38:25.267000000
+events/ims_events/2010-08_ims.parquet,,0.0,1694,30,Date,2010-08-01 00:48:15.521000000,2010-08-31 23:57:56.147000000
+events/ims_events/2010-09_ims.parquet,,0.0,4257,30,Date,2010-09-01 00:24:31.391000000,2010-09-30 23:34:55.254000000
+events/ims_events/2010-10_ims.parquet,,0.0,9117,30,Date,2010-10-01 00:13:58.878000000,2010-10-31 23:58:29.144000000
+events/ims_events/2010-11_ims.parquet,,0.0,11982,30,Date,2010-11-01 00:02:42.416000000,2010-11-30 23:58:19.422000000
+events/ims_events/2010-12_ims.parquet,,0.0,15884,30,Date,2010-12-01 00:01:53.211000000,2010-12-31 23:54:48.003000000
+events/ims_events/2011-01_ims.parquet,,0.0,37167,30,Date,2011-01-01 00:00:43.959000000,2011-01-31 23:58:06.296000000
+events/ims_events/2011-02_ims.parquet,,0.0,26076,30,Date,2011-02-01 00:00:44.661000000,2011-02-28 23:59:09.390000000
+events/ims_events/2011-03_ims.parquet,,0.0,11413,30,Date,2011-03-01 00:03:19.577000000,2011-03-31 23:39:26.513000000
+events/ims_events/2011-04_ims.parquet,,0.0,19267,30,Date,2011-04-01 00:05:41.712000000,2011-04-30 23:59:52.681000000
+events/ims_events/2011-05_ims.parquet,,0.0,14787,30,Date,2011-05-01 00:00:48.214000000,2011-05-31 23:55:31.824000000
+events/ims_events/2011-06_ims.parquet,,0.0,3588,30,Date,2011-06-01 00:17:44.636000000,2011-06-30 23:47:52.960000000
+events/ims_events/2011-07_ims.parquet,,0.0,3415,30,Date,2011-07-01 00:00:43.907000000,2011-07-31 23:56:34.229000000
+events/ims_events/2011-08_ims.parquet,,0.0,10235,30,Date,2011-08-01 00:03:23.173000000,2011-08-31 23:58:20.099000000
+events/ims_events/2011-09_ims.parquet,,0.0,12797,30,Date,2011-09-01 00:03:57.564000000,2011-09-30 23:57:58.111000000
+events/ims_events/2011-10_ims.parquet,,0.0,9386,30,Date,2011-10-01 00:06:56.575000000,2011-10-31 23:32:11.257000000
+events/ims_events/2011-11_ims.parquet,,0.0,6542,30,Date,2011-11-01 00:04:32.683000000,2011-11-30 23:48:07.617000000
+events/ims_events/2011-12_ims.parquet,,0.0,7381,30,Date,2011-12-01 00:00:04.327000000,2011-12-31 23:51:31.021000000
+events/ims_events/2012-01_ims.parquet,,0.0,5513,30,Date,2012-01-01 00:14:37.664000000,2012-01-31 23:50:01.171000000
+events/ims_events/2012-02_ims.parquet,,0.0,11231,30,Date,2012-02-01 00:06:23.916000000,2012-02-29 23:27:40.524000000
+events/ims_events/2012-03_ims.parquet,,0.0,14685,30,Date,2012-03-01 00:01:51.466000000,2012-03-31 23:59:34.895000000
+events/ims_events/2012-04_ims.parquet,,0.0,12272,30,Date,2012-04-01 00:04:44.566000000,2012-04-30 23:45:42.183000000
+events/ims_events/2012-05_ims.parquet,,0.0,2218,30,Date,2012-05-01 00:24:49.056000000,2012-05-31 23:49:44.436000000
+events/ims_events/2012-06_ims.parquet,,0.0,1870,30,Date,2012-06-01 00:28:58.355000000,2012-06-30 23:52:35.115000000
+events/ims_events/2012-07_ims.parquet,,0.0,5871,30,Date,2012-07-01 00:05:12.350000000,2012-07-31 23:59:25.926000000
+events/ims_events/2012-08_ims.parquet,,0.0,7902,30,Date,2012-08-01 00:08:33.398000000,2012-08-31 23:56:29.151000000
+events/ims_events/2012-09_ims.parquet,,0.0,6319,30,Date,2012-09-01 00:10:17.303000000,2012-09-30 23:57:19.079000000
+events/ims_events/2012-10_ims.parquet,,0.0,21560,30,Date,2012-10-01 00:06:49.318000000,2012-10-31 23:59:46.177000000
+events/ims_events/2012-11_ims.parquet,,0.0,23689,30,Date,2012-11-01 00:02:07.177000000,2012-11-30 23:58:57.438000000
+events/ims_events/2012-12_ims.parquet,,0.0,9935,30,Date,2012-12-01 00:00:34.731000000,2012-12-31 23:49:02.252000000
+events/ims_events/2013-01_ims.parquet,,0.0,3293,30,Date,2013-01-01 00:08:46.261000000,2013-01-31 23:59:26.860000000
+events/ims_events/2013-02_ims.parquet,,0.0,3720,30,Date,2013-02-01 00:03:14.446000000,2013-02-28 23:58:09.161000000
+events/ims_events/2013-03_ims.parquet,,0.0,898,30,Date,2013-03-01 01:10:37.721000000,2013-03-31 21:51:30.185000000
+events/ims_events/2013-04_ims.parquet,,0.0,54,30,Date,2013-04-01 00:00:46.759000000,2013-04-06 13:34:55.729000000
+instrumentation/closures_and_mpbx_extensometers/1 North Inby closure stations measurements.xlsx,Sheet1,4.0,9,21,Date,2009-11-18 00:00:00.000000000,2009-12-10 00:00:00.000000000
+instrumentation/closures_and_mpbx_extensometers/1 North Inby closure stations measurements.xlsx,Sheet2,,0,0,,,
+instrumentation/closures_and_mpbx_extensometers/1 North Inby closure stations measurements.xlsx,Sheet3,,0,0,,,
+instrumentation/closures_and_mpbx_extensometers/1 North Outby closure stations measurements.xlsx,Sheet1,4.0,11,19,Date,2010-03-10 00:00:00.000000000,2010-04-23 00:00:00.000000000
+instrumentation/closures_and_mpbx_extensometers/1 North Outby closure stations measurements.xlsx,Sheet2,,0,0,,,
+instrumentation/closures_and_mpbx_extensometers/1 North Outby closure stations measurements.xlsx,Sheet3,,0,0,,,
+instrumentation/closures_and_mpbx_extensometers/2 North Inby closure stations measurements.xlsx,Sheet1,4.0,19,17,Date,2009-11-18 00:00:00.000000000,2010-10-14 00:00:00.000000000
+instrumentation/closures_and_mpbx_extensometers/2 North Inby closure stations measurements.xlsx,Sheet2,,0,0,,,
+instrumentation/closures_and_mpbx_extensometers/2 North Inby closure stations measurements.xlsx,Sheet3,,0,0,,,
+instrumentation/closures_and_mpbx_extensometers/2 North Inby MPBX multi-point extensometer measurements.xlsx,Sheet1,4.0,16,30,Date,2009-11-24 00:00:00.000000000,2010-09-13 00:00:00.000000000
+instrumentation/closures_and_mpbx_extensometers/2 North Inby MPBX multi-point extensometer measurements.xlsx,Sheet2,,0,0,,,
+instrumentation/closures_and_mpbx_extensometers/2 North Inby MPBX multi-point extensometer measurements.xlsx,Sheet3,,0,0,,,
+instrumentation/closures_and_mpbx_extensometers/2 North Outby closure stations measurements.xlsx,Sheet1,4.0,15,15,Date,2010-03-11 00:00:00.000000000,2011-01-05 00:00:00.000000000
+instrumentation/closures_and_mpbx_extensometers/2 North Outby closure stations measurements.xlsx,Sheet2,,0,0,,,
+instrumentation/closures_and_mpbx_extensometers/2 North Outby closure stations measurements.xlsx,Sheet3,,0,0,,,
+instrumentation/borehole_pressure_cells_and_string_pots/1 North Inby Panel 1 BPC Raw Readings--Larson.xlsx,Sheet1,9.0,867,19,Serial Date,2009-11-05 11:15:00.000000000,2009-12-15 09:59:59.999999786
+instrumentation/borehole_pressure_cells_and_string_pots/1 North Inby Panel 1 BPC Raw Readings--Larson.xlsx,Sheet2,,0,0,,,
+instrumentation/borehole_pressure_cells_and_string_pots/1 North Inby Panel 1 BPC Raw Readings--Larson.xlsx,Sheet3,,0,0,,,
+instrumentation/borehole_pressure_cells_and_string_pots/1 North Outby Panel 1 BPC and String Pot Extensometer Raw Readings--Larson.xlsx,Sheet1,9.0,2960,34,Serial Date,2010-01-27 17:00:00.000000213,2010-05-08 00:00:00.000000000
+instrumentation/borehole_pressure_cells_and_string_pots/1 North Outby Panel 1 BPC and String Pot Extensometer Raw Readings--Larson.xlsx,Sheet2,,0,0,,,
+instrumentation/borehole_pressure_cells_and_string_pots/1 North Outby Panel 1 BPC and String Pot Extensometer Raw Readings--Larson.xlsx,Sheet3,,0,0,,,
+instrumentation/borehole_pressure_cells_and_string_pots/2 North Inby Panel 1 BPC Raw Readings--Larson.xlsx,Sheet1,9.0,3993,23,Serial Date,2009-11-16 14:16:00.000000194,2010-05-22 21:00:00.000000000
+instrumentation/borehole_pressure_cells_and_string_pots/2 North Inby Panel 1 BPC Raw Readings--Larson.xlsx,Sheet2,,0,0,,,
+instrumentation/borehole_pressure_cells_and_string_pots/2 North Inby Panel 1 BPC Raw Readings--Larson.xlsx,Sheet3,,0,0,,,
+instrumentation/borehole_pressure_cells_and_string_pots/2 North Inby Panel 2 BPC Raw Readings--Larson.xlsx,Sheet1,9.0,8439,23,Serial Date,2010-05-22 21:59:59.999999786,2010-10-14 06:24:59.999999860
+instrumentation/borehole_pressure_cells_and_string_pots/2 North Inby Panel 2 BPC Raw Readings--Larson.xlsx,Sheet2,,0,0,,,
+instrumentation/borehole_pressure_cells_and_string_pots/2 North Inby Panel 2 BPC Raw Readings--Larson.xlsx,Sheet3,,0,0,,,
+instrumentation/borehole_pressure_cells_and_string_pots/2 North Outby Panel 1 BPC and String Pot Extensometer Raw Readings--Larson.xlsx,Sheet1,9.0,760,38,Serial Date,2010-01-26 15:00:00.000000000,2010-08-04 06:59:59.999999786
+instrumentation/borehole_pressure_cells_and_string_pots/2 North Outby Panel 1 BPC and String Pot Extensometer Raw Readings--Larson.xlsx,Sheet2,,0,0,,,
+instrumentation/borehole_pressure_cells_and_string_pots/2 North Outby Panel 1 BPC and String Pot Extensometer Raw Readings--Larson.xlsx,Sheet3,,0,0,,,
+instrumentation/borehole_pressure_cells_and_string_pots/2 North Outby Panel 2 BPC and String Pot Extensometer Raw Readings--Larson.xlsx,Sheet1,9.0,10591,38,Serial Date,2010-05-21 00:00:00.000000000,2011-04-05 12:40:00.000000278
+instrumentation/borehole_pressure_cells_and_string_pots/2 North Outby Panel 2 BPC and String Pot Extensometer Raw Readings--Larson.xlsx,Sheet2,,0,0,,,
+instrumentation/borehole_pressure_cells_and_string_pots/2 North Outby Panel 2 BPC and String Pot Extensometer Raw Readings--Larson.xlsx,Sheet3,,0,0,,,

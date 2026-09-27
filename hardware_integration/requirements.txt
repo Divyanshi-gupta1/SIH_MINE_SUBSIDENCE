@@ -1,0 +1,2 @@
+# hardware_integration/ -- on top of the project's existing model deps (scikit-learn, pandas, numpy, joblib)
+pyserial>=3.5      # live serial input only; everything else (sim / replay / tests) runs without it
