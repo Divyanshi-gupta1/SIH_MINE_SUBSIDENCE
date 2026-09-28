@@ -1,7 +1,7 @@
 import fs from "fs";
 import path from "path";
 import type { Alert, NodeState, RiskState, ZoneState } from "./types";
-import { nodesFor, zonesFor, alertsFor, rank } from "./demo";
+import { nodesFor, zonesFor, alertsFor, overallState, SENSOR_LAYOUT } from "./demo";
 
 export interface LiveHardwarePacket {
   node_id: string;
@@ -20,56 +20,84 @@ export interface LiveHardwarePacket {
 }
 
 export interface LiveMLEvidence {
+  node_id?: string;
   event_type: "normal" | "decoy_seismic" | "subsidence_precursor";
   anomaly: boolean;
   confidence: number;
   probabilities?: Record<string, number>;
-  danger_level: number;
-  danger_category: "Safe" | "Caution" | "Critical";
-  trend: "stable" | "increasing" | "accelerating";
-  persistence: boolean;
-  deformation_rate: number;
-  evidence: string[];
-  model_version: string;
+  danger_level?: number;
+  danger_category?: "Safe" | "Caution" | "Critical";
+  trend?: string;
+  persistence?: boolean;
+  deformation_rate?: number;
+  evidence?: string[];
+  model_version?: string;
 }
 
 export interface LiveSystemState {
   schema_version: string;
-  last_updated: string;
+  generated_at: string;
   is_live: boolean;
-  last_packet?: LiveHardwarePacket;
-  last_ml?: LiveMLEvidence;
+  stage: number;
+  scenario: "progressive" | "false_local" | "normal";
+  overall_state: RiskState;
   nodes: NodeState[];
   zones: ZoneState[];
   alerts: Alert[];
-  stage: number;
-  mode: "progressive" | "false_local" | "normal";
   local_monitoring: "ACTIVE" | "STANDBY";
   cloud: "CONNECTED" | "OFFLINE";
   ml_adapter: "READY" | "PROCESSING" | "OFFLINE";
+  data_source: "LIVE_HARDWARE" | "DEMO";
+  last_updated: string;
+  node_last_times: Record<string, number>;
 }
 
-// In-memory global store so API routes share state across invocations
 declare global {
   var __mineguard_live_state__: LiveSystemState | undefined;
 }
 
+const DATA_FILE = path.join(process.cwd(), "data", "live_state.json");
+
+function normalizeNodeId(raw: string): { id: string; zoneId: string } {
+  const clean = raw.trim().toUpperCase().replace(/[-_]/g, "");
+  if (clean.includes("1") || clean.includes("01")) {
+    return { id: "SN-001", zoneId: "Z-001" };
+  }
+  if (clean.includes("2") || clean.includes("02")) {
+    return { id: "SN-002", zoneId: "Z-002" };
+  }
+  if (clean.includes("3") || clean.includes("03")) {
+    return { id: "SN-003", zoneId: "Z-003" };
+  }
+  return { id: "SN-001", zoneId: "Z-001" };
+}
+
 function getInitialState(): LiveSystemState {
   const initialStage = 0;
-  const initialMode = "normal" as const;
-  const zones = zonesFor(initialStage, initialMode);
+  const initialScenario = "normal" as const;
+  const zones = zonesFor(initialStage, initialScenario);
+  const nodes = nodesFor(initialStage, initialScenario);
+  const node_last_times: Record<string, number> = {};
+  for (const n of nodes) {
+    node_last_times[n.id] = Date.now();
+  }
+
   return {
-    schema_version: "1.0",
-    last_updated: new Date().toISOString(),
+    schema_version: "1.1",
+    generated_at: new Date().toISOString(),
     is_live: false,
-    nodes: nodesFor(initialStage, initialMode),
-    zones,
-    alerts: alertsFor(zones, initialStage),
     stage: initialStage,
-    mode: initialMode,
+    scenario: initialScenario,
+    overall_state: overallState(zones),
+    nodes,
+    zones,
+    alerts: alertsFor(zones, initialStage, initialScenario),
     local_monitoring: "ACTIVE",
     cloud: "CONNECTED",
-    ml_adapter: "READY"
+    ml_adapter: "READY",
+    data_source: "DEMO",
+    last_updated: new Date().toISOString(),
+    node_last_times
   };
 }
 
@@ -77,139 +105,214 @@ if (!globalThis.__mineguard_live_state__) {
   globalThis.__mineguard_live_state__ = getInitialState();
 }
 
-const DATA_FILE = path.join(process.cwd(), "data", "live_state.json");
+/** Check staleness (no signal for >30s) and update node health messages */
+function applyHealthChecks(state: LiveSystemState) {
+  const now = Date.now();
+  for (const node of state.nodes) {
+    const lastSeenTime = state.node_last_times[node.id];
+    if (lastSeenTime) {
+      const elapsedSeconds = (now - lastSeenTime) / 1000;
+      if (elapsedSeconds > 30) {
+        node.healthy = false;
+        node.quality = "UNAVAILABLE";
+        node.lastSeen = `>30s ago (no signal: ${Math.round(elapsedSeconds)}s)`;
+        node.healthMessage = `Node is not sending signals (>30s silence)`;
+      }
+    }
+  }
+}
 
 export function getLiveSystemState(): LiveSystemState {
-  // If file exists, try reading to sync with Python bridge
+  const state = globalThis.__mineguard_live_state__ || getInitialState();
+
+  // Try syncing from disk if live_state.json exists
   if (fs.existsSync(DATA_FILE)) {
     try {
       const content = fs.readFileSync(DATA_FILE, "utf-8");
-      const diskState = JSON.parse(content);
-      if (diskState && diskState.last_updated) {
-        return diskState;
+      const diskData = JSON.parse(content);
+      if (diskData && (diskData.is_live || diskData.last_updated)) {
+        state.is_live = Boolean(diskData.is_live);
+        state.stage = typeof diskData.stage === "number" ? diskData.stage : state.stage;
+        state.data_source = diskData.is_live ? "LIVE_HARDWARE" : state.data_source;
+        state.last_updated = diskData.last_updated || new Date().toISOString();
+
+        if (Array.isArray(diskData.nodes)) {
+          for (const dNode of diskData.nodes) {
+            const { id } = normalizeNodeId(dNode.id);
+            const target = state.nodes.find((n) => n.id === id);
+            if (target) {
+              target.tilt = typeof dNode.tilt === "number" ? dNode.tilt : target.tilt;
+              target.displacement = typeof dNode.displacement === "number" ? dNode.displacement : target.displacement;
+              target.vibration = typeof dNode.vibration === "number" ? dNode.vibration : target.vibration;
+              if (dNode.battery !== undefined) target.battery = dNode.battery;
+              if (dNode.rssi !== undefined) target.rssi = dNode.rssi;
+              if (dNode.lastSeen) target.lastSeen = dNode.lastSeen;
+              if (dNode.healthMessage) target.healthMessage = dNode.healthMessage;
+              if (typeof dNode.healthy === "boolean") target.healthy = dNode.healthy;
+              if (dNode.healthy) {
+                state.node_last_times[id] = Date.now();
+              }
+            }
+          }
+        }
+
+        if (Array.isArray(diskData.zones)) {
+          state.zones = diskData.zones;
+        }
+        if (Array.isArray(diskData.alerts)) {
+          state.alerts = diskData.alerts;
+        }
+        state.overall_state = overallState(state.zones);
       }
     } catch {
-      // Fallback to in-memory state
+      // Non-fatal disk read fallback
     }
   }
-  return globalThis.__mineguard_live_state__ || getInitialState();
+
+  applyHealthChecks(state);
+  state.overall_state = overallState(state.zones);
+  state.generated_at = new Date().toISOString();
+  return state;
 }
 
-export function updateStateFromHardwareAndML(
-  packet: LiveHardwarePacket,
-  ml?: LiveMLEvidence
-): LiveSystemState {
-  const state = getLiveSystemState();
+export function ingestHardwarePacket(packet: LiveHardwarePacket): { accepted: boolean; message?: string } {
+  const state = globalThis.__mineguard_live_state__ || getInitialState();
   state.is_live = true;
+  state.data_source = "LIVE_HARDWARE";
   state.last_updated = new Date().toISOString();
-  state.last_packet = packet;
-  state.local_monitoring = "ACTIVE";
-  state.cloud = "CONNECTED";
-  state.ml_adapter = "READY";
 
-  // Map node_id: NODE_1 / NODE_01 -> N1
-  const rawId = packet.node_id.toUpperCase().replace("NODE_", "N").replace("NODE", "N");
-  const normalizedId = rawId.startsWith("N") ? rawId : `N${rawId}`;
+  const { id, zoneId } = normalizeNodeId(packet.node_id);
+  const now = Date.now();
+  state.node_last_times[id] = now;
 
-  const netTilt = Number(Math.sqrt(packet.tilt_x_deg ** 2 + packet.tilt_y_deg ** 2).toFixed(2));
-  const disp = Number(packet.relative_displacement_mm.toFixed(2));
-  const vib = Number(packet.vibration_level.toFixed(2));
-
-  // 1. Update Node in node list
-  const nodeIndex = state.nodes.findIndex((n) => n.id === normalizedId);
-  const updatedNode: NodeState = {
-    id: normalizedId,
-    battery: packet.battery_percent || 90,
-    rssi: packet.rssi || -45,
-    lastSeen: "just now",
-    tilt: netTilt,
-    displacement: disp,
-    vibration: vib,
-    healthy: packet.quality === "good"
-  };
-
-  if (nodeIndex >= 0) {
-    state.nodes[nodeIndex] = updatedNode;
-  } else {
-    state.nodes.push(updatedNode);
+  let targetNode = state.nodes.find((n) => n.id === id);
+  if (!targetNode) {
+    targetNode = {
+      id,
+      zoneId,
+      battery: packet.battery_percent || 90,
+      rssi: packet.rssi || -45,
+      lastSeen: "just now",
+      tilt: 0,
+      displacement: 0,
+      deformationRate: 0.02,
+      vibration: 0.03,
+      healthy: true,
+      quality: "GOOD",
+      modelClass: "normal",
+      modelConfidence: 0.95,
+      healthMessage: "Nominal telemetry"
+    };
+    state.nodes.push(targetNode);
   }
 
-  // 2. Update ML Evidence & Risk State
-  if (ml) {
-    state.last_ml = ml;
+  // Check for unrealistic measurements
+  const netTilt = Math.sqrt((packet.tilt_x_deg || 0) ** 2 + (packet.tilt_y_deg || 0) ** 2);
+  const disp = packet.relative_displacement_mm;
+  const vib = packet.vibration_level;
 
-    let targetRisk: RiskState = "NORMAL";
-    let targetStage = 0;
+  let isUnrealistic = false;
+  let unrealisticReason = "";
 
-    if (ml.event_type === "subsidence_precursor") {
-      if (ml.danger_level >= 75 || disp > 15 || packet.crack_detected) {
-        targetRisk = "CRITICAL";
-        targetStage = 5;
-      } else if (ml.danger_level >= 50 || disp > 5) {
-        targetRisk = "HIGH_RISK";
-        targetStage = 4;
-      } else {
-        targetRisk = "PROGRESSIVE";
-        targetStage = 3;
-      }
-    } else if (ml.event_type === "decoy_seismic") {
-      targetRisk = "LOCAL_ANOMALY";
-      targetStage = 1;
+  if (Number.isNaN(netTilt) || netTilt > 90.0) {
+    isUnrealistic = true;
+    unrealisticReason = `Tilt ${netTilt.toFixed(1)}° out of physical limits (max 90°)`;
+  } else if (Number.isNaN(disp) || Math.abs(disp) > 500.0) {
+    isUnrealistic = true;
+    unrealisticReason = `Displacement ${disp}mm out of physical bounds`;
+  } else if (Number.isNaN(vib) || vib > 15.0) {
+    isUnrealistic = true;
+    unrealisticReason = `Vibration level ${vib}g exceeds sensor saturation`;
+  }
+
+  targetNode.lastSeen = "just now";
+  targetNode.battery = packet.battery_percent || targetNode.battery;
+  targetNode.rssi = packet.rssi || targetNode.rssi;
+
+  if (isUnrealistic) {
+    targetNode.healthy = false;
+    targetNode.quality = "DEGRADED";
+    targetNode.healthMessage = `Unrealistic measurement: ${unrealisticReason}`;
+  } else {
+    targetNode.healthy = true;
+    targetNode.quality = "GOOD";
+    targetNode.tilt = Number(netTilt.toFixed(2));
+    targetNode.displacement = Number(disp.toFixed(2));
+    targetNode.vibration = Number(vib.toFixed(2));
+    targetNode.healthMessage = "Nominal telemetry · All checks passed";
+  }
+
+  applyHealthChecks(state);
+  return { accepted: true };
+}
+
+export function ingestMLEvidence(ml: LiveMLEvidence): { accepted: boolean } {
+  const state = globalThis.__mineguard_live_state__ || getInitialState();
+  state.is_live = true;
+  state.data_source = "LIVE_HARDWARE";
+  state.last_updated = new Date().toISOString();
+
+  const { id } = normalizeNodeId(ml.node_id || "NODE_01");
+  const node = state.nodes.find((n) => n.id === id);
+  if (node) {
+    node.modelClass = ml.event_type;
+    node.modelConfidence = ml.confidence > 1 ? ml.confidence / 100 : ml.confidence;
+    if (ml.deformation_rate !== undefined) {
+      node.deformationRate = ml.deformation_rate;
+    }
+  }
+
+  // Update Zone 1 (or appropriate zone)
+  let stage = 0;
+  let riskState: RiskState = "NORMAL";
+
+  if (ml.event_type === "subsidence_precursor") {
+    if (ml.confidence >= 75 || (ml.danger_level && ml.danger_level >= 75)) {
+      stage = 5;
+      riskState = "CRITICAL";
+    } else if (ml.confidence >= 50 || (ml.danger_level && ml.danger_level >= 50)) {
+      stage = 4;
+      riskState = "HIGH_RISK";
     } else {
-      // Normal
-      targetRisk = "NORMAL";
-      targetStage = 0;
+      stage = 3;
+      riskState = "PROGRESSIVE";
     }
+  } else if (ml.event_type === "decoy_seismic") {
+    stage = 1;
+    riskState = "LOCAL_ANOMALY";
+  }
 
-    state.stage = targetStage;
-
-    // Update Zone 1 (Initial deformation zone for N1)
-    const z1 = state.zones[0];
-    if (z1) {
-      z1.state = targetRisk;
-      z1.trend = ml.trend === "accelerating" ? "Accelerating" : ml.trend === "increasing" ? "Rising" : "Stable";
-      z1.confidence = ml.confidence > 80 ? "HIGH" : "MEDIUM";
-      z1.evidence = ml.evidence && ml.evidence.length ? ml.evidence : [
-        `ML Model (${ml.model_version}): ${ml.event_type.replace("_", " ")} (${ml.confidence}% conf)`,
-        `Tilt: ${netTilt}° | Displacement: ${disp} mm | Vibration: ${vib} g`,
-        `Danger Level: ${ml.danger_level}/100 (${ml.danger_category})`
-      ];
+  state.stage = stage;
+  const z1 = state.zones[0];
+  if (z1) {
+    z1.state = riskState;
+    z1.trend = stage >= 4 ? "Accelerating" : stage >= 1 ? "Rising" : "Stable";
+    z1.confidence = ml.confidence >= 75 ? "HIGH" : "MEDIUM";
+    if (ml.evidence && ml.evidence.length) {
+      z1.evidence = ml.evidence;
     }
+  }
 
-    // Update alerts if precursor detected
-    if (targetRisk === "CRITICAL" || targetRisk === "HIGH_RISK") {
-      const existingAlert = state.alerts.find((a) => a.zoneId === "Z1");
-      const newAlert: Alert = {
-        id: existingAlert ? existingAlert.id : `ALT-${Date.now().toString().slice(-4)}`,
-        zoneId: "Z1",
-        severity: targetRisk === "CRITICAL" ? "CRITICAL" : "HIGH",
-        title: `Z1 (${normalizedId}): Subsidence Precursor Buildup Detected`,
-        summary: `ML Model (${ml.model_version}) detected progressive rock mass deformation with ${ml.confidence}% confidence. Risk score: ${ml.danger_level}/100.`,
+  if (stage >= 4) {
+    state.alerts = [
+      {
+        id: `ALT-LIVE-${Date.now() % 1000}`,
+        zoneId: "Z-001",
+        nodeId: id,
+        severity: stage === 5 ? "CRITICAL" : "HIGH",
+        title: `${z1.id} (${id}): progressive subsidence precursor confirmed`,
+        summary: `Random Forest v6 detected continuous ground deformation (confidence: ${Math.round(node ? node.modelConfidence * 100 : 80)}%).`,
         evidence: z1.evidence,
         confidence: "HIGH",
         lifecycle: "NEW",
-        created: "just now"
-      };
-
-      if (!existingAlert) {
-        state.alerts.unshift(newAlert);
-      } else {
-        state.alerts[0] = newAlert;
+        created: "just now",
+        recommendedAction: stage === 5 ? "Verify field conditions and trigger site response protocol." : "Inspect the affected zone."
       }
-    }
+    ];
+  } else if (stage === 0) {
+    state.alerts = [];
   }
 
-  // Save to disk cache for live persistence
-  try {
-    const dir = path.dirname(DATA_FILE);
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
-    }
-    fs.writeFileSync(DATA_FILE, JSON.stringify(state, null, 2), "utf-8");
-  } catch {
-    // ignore filesystem write errors
-  }
-
-  globalThis.__mineguard_live_state__ = state;
-  return state;
+  state.overall_state = overallState(state.zones);
+  return { accepted: true };
 }

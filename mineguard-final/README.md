@@ -1,80 +1,106 @@
-# MineGuard Dashboard — Runnable SIH Prototype
+# MineGuard Dashboard — SIH 26025 Runnable Prototype
 
-This folder is the **actual runnable dashboard application** for the MineGuard concept. It replaces the earlier placeholder/prototype-only package.
+This is the updated MineGuard software layer for the SIH 26025 mine-subsidence monitoring concept.
 
-## Requirements
+## What changed in this build
 
-- Node.js 18+ (Node 20+ recommended)
-- npm 9+
+- Professional light engineering / mine-control visual design instead of the previous dark prototype theme.
+- GIS-style engineering map with panel/corridor geometry, layers, gateway, asset, deformation direction and assessed impact zone.
+- Hover/focus inspection card for each sensor node with live readings, health, communication quality and ML status.
+- Scalable sensor IDs (`SN-001`, `SN-002`, `SN-003`) driven by data/configuration instead of UI-specific hardcoding.
+- Dedicated **Demo Mode** with scenario selection, Start, Pause, Reset and 1×/2×/4× playback speed.
+- Demo mode advances through operational states instead of exposing raw manual stage buttons to the operator.
+- Explicit separation of **Demo**, **Live Testbed**, and **Live Mine** data-source modes.
+- Alert workflow supports Acknowledge, Mark for Verification, Confirm, Dismiss and Sensor Issue.
+- False-local disturbance scenario remains a verification/watch event rather than escalating directly to critical.
+- Interactive GIS layer controls for grid, sensors, risk, assets, impact and mesh/network.
+- History / event replay remains synchronized with map and zone state.
+- Local-first/cloud status remains visible; cloud outage is represented without implying local monitoring has stopped.
+- API contracts updated for hardware ingestion and ML integration readiness.
+
+## Important scope boundary
+
+The dashboard package does **not** contain the ML team's trained model or the physical LoRa/ESP32 gateway service. The package provides the application architecture and integration seams for those components.
+
+Expected real deployment flow:
+
+```text
+Physical sensor nodes
+        ↓
+Wireless surface mesh
+        ↓
+Gateway
+        ↓
+Validated sensor packet
+        ↓
+ML / temporal / spatial processing
+        ↓
+MineGuard operational state
+        ↓
+Dashboard + alert lifecycle
+```
+
+Demo Mode uses synthetic observations to exercise the same logical dashboard state model. It does not claim to reproduce field sensor noise or calibrated mine safety thresholds.
 
 ## Run locally
 
 ```bash
 npm install
+npm run typecheck
 npm run build
 npm start
 ```
 
-Then open the local URL shown by Next.js (normally `http://localhost:3000`).
-
-For development:
+Development mode:
 
 ```bash
 npm run dev
 ```
 
-Optional type check:
+Default local URL:
 
-```bash
-npm run typecheck
-```
+`http://localhost:3000`
 
-## What is implemented
+## Integration endpoints
 
-- Command Center
-- Live GIS testbed visualization using SVG/local engineering coordinates
-- Zone Intelligence
-- Sensor Analytics
-- Alert & Action lifecycle
-- Event Replay / History
-- Network Health
-- Engineering Settings
-- Demo Scenario Simulator
-- Local-first/cloud status indicator
-- Asset impact context
-- Explainable evidence
-- ML adapter endpoint at `POST /api/ml`
-- State snapshot endpoint at `GET /api/state`
+### Hardware packet
 
-## Important integration boundary
+`POST /api/ingest`
 
-The dashboard does **not** contain your ML team's trained model. It provides the integration seam for the model/service.
-
-Expected model output fields include:
+Required fields:
 
 ```json
 {
-  "anomaly": true,
-  "trend": "increasing",
-  "persistence": true,
-  "deformation_rate": 0.34,
-  "confidence": 0.91,
-  "evidence": [
-    "3 neighbouring nodes corroborate movement",
-    "Relative displacement is increasing"
-  ],
-  "model_version": "team-model-v1"
+  "node_id": "SN-003",
+  "timestamp": "2026-09-25T04:00:00Z",
+  "sequence": 1842,
+  "tilt_x_deg": 0.34,
+  "tilt_y_deg": 0.12,
+  "relative_displacement_mm": 4.8,
+  "vibration_level": 0.63,
+  "crack_detected": false,
+  "battery_percent": 82,
+  "rssi": -71,
+  "quality": "good"
 }
 ```
 
-Replace the demo adapter with the ML team's real inference service after their actual schema is confirmed.
+### ML adapter
 
-## Demo scenarios
+`POST /api/ml`
 
-Use the **Scenario simulator** in Command Center or Demo view:
+The dashboard contract expects anomaly/trend/persistence/rate/confidence/evidence/model-version outputs. It should not be presented as a calibrated collapse probability unless the external model has actually been validated for that interpretation.
 
-1. Progressive — Normal → Local anomaly → Persistent → Correlated → Progressive → High risk.
-2. False local — a single node disturbance should remain a local anomaly and not become critical.
-3. Normal — clears the event and returns the system to normal.
+### State snapshot
 
-The prototype deliberately uses demonstration thresholds and does **not** claim a calibrated collapse probability.
+`GET /api/state?stage=4&scenario=progressive`
+
+Supported scenarios:
+
+- `progressive`
+- `false_local`
+- `normal`
+
+## Verification
+
+See `docs/FINAL-VERIFICATION.md` for the browser and SIH acceptance checklist.

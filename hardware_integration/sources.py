@@ -68,18 +68,50 @@ def file_source(path: str | Path, dt: float = 0.05) -> Iterator[tuple[float, str
             yield prev, line
 
 
-def serial_source(port: str, baud: int = 115200, max_seconds: float | None = None,
-                  raw_log: str | Path | None = None, time_scale: float = 1.0) -> Iterator[tuple[float, str]]:
-    """Read lines from the receiver Arduino. `port` is COM5, /dev/ttyUSB0 or any pyserial URL
-    (socket://host:port for fake_serial.py, loop://, rfc2217://). t = seconds since the first call,
-    times `time_scale` (>1 ONLY for an accelerated simulator: fake_serial.py --speed N pairs with
-    --time-scale N so the pipeline sees the same timeline as at real speed).
-    A lost port (unplugged USB, closed socket) ends the iteration with a message on stderr."""
+def resolve_serial_port(port: str | None = None) -> str:
+    """Auto-resolves serial port across Mac, Windows, and Linux if port is None or 'auto'."""
     try:
         import serial
-    except ImportError as e:                                   # keep the rest importable without it
+        import serial.tools.list_ports
+    except ImportError as e:
         raise SystemExit("pyserial is required for live serial input:  pip install pyserial") from e
-    ser = serial.serial_for_url(port, baudrate=baud, timeout=0.5)
+
+    if port and port.lower() != "auto":
+        return port
+
+    comports = list(serial.tools.list_ports.comports())
+    if not comports:
+        print("[MineGuard Port Warning] No active serial ports found.", file=sys.stderr)
+        print("Please check USB cable connection to ESP32 Gateway.", file=sys.stderr)
+        raise SystemExit(1)
+
+    # Filter for USB serial adapters (CH340, CP2102, FTDI, CDC ACM, etc.)
+    usb_ports = []
+    for p in comports:
+        desc = (p.description or "").lower()
+        dev = (p.device or "").lower()
+        hwid = (p.hwid or "").lower()
+        if any(term in desc or term in dev or term in hwid for term in (
+            "usb", "cp210", "ch340", "ch341", "ftdi", "uart", "serial", "acm", "modem"
+        )):
+            usb_ports.append(p)
+
+    selected = usb_ports[0] if usb_ports else comports[0]
+    print(f"[MineGuard Port Auto-Detect] Auto-selected: {selected.device} ({selected.description})")
+    return selected.device
+
+
+def serial_source(port: str | None = "auto", baud: int = 115200, max_seconds: float | None = None,
+                  raw_log: str | Path | None = None, time_scale: float = 1.0) -> Iterator[tuple[float, str]]:
+    """Read lines from the receiver Arduino. `port` is COM5, /dev/ttyUSB0 or any pyserial URL.
+    Supports 'auto' for automatic cross-platform port detection on Mac, Windows, and Linux."""
+    try:
+        import serial
+    except ImportError as e:
+        raise SystemExit("pyserial is required for live serial input:  pip install pyserial") from e
+
+    resolved_port = resolve_serial_port(port)
+    ser = serial.serial_for_url(resolved_port, baudrate=baud, timeout=0.5)
     log = open(raw_log, "a", encoding="utf-8") if raw_log else None
     t_start = time.monotonic()
     try:

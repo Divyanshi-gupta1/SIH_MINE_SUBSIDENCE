@@ -31,8 +31,9 @@ from dashboard_sync import DashboardSync
 
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    src = ap.add_mutually_exclusive_group(required=True)
-    src.add_argument("--port")
+    src = ap.add_mutually_exclusive_group(required=False)
+    src.add_argument("--port", default="auto", nargs="?", const="auto",
+                     help="Serial port (COM5, /dev/cu.usbserial-*, or 'auto' for auto-detection)")
     src.add_argument("--replay")
     ap.add_argument("--baud", type=int)
     ap.add_argument("--config")

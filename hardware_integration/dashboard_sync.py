@@ -2,6 +2,7 @@
 Dashboard Synchronizer for MineGuard
 Translates SampleOutput from inference_pipeline into the live state schema
 consumed by mineguard-final dashboard (mineguard-final/data/live_state.json).
+Includes 30-second silence watchdog and unrealistic measurement filtering.
 """
 import os
 import json
@@ -13,10 +14,36 @@ HERE = Path(__file__).resolve().parent
 PROJECT_ROOT = HERE.parent
 DATA_FILE = PROJECT_ROOT / "mineguard-final" / "data" / "live_state.json"
 
+NODE_MAPPING = {
+    "NODE_01": ("SN-001", "Z-001"),
+    "NODE_1": ("SN-001", "Z-001"),
+    "N1": ("SN-001", "Z-001"),
+    "SN-001": ("SN-001", "Z-001"),
+    "NODE_02": ("SN-002", "Z-002"),
+    "NODE_2": ("SN-002", "Z-002"),
+    "N2": ("SN-002", "Z-002"),
+    "SN-002": ("SN-002", "Z-002"),
+    "NODE_03": ("SN-003", "Z-003"),
+    "NODE_3": ("SN-003", "Z-003"),
+    "N3": ("SN-003", "Z-003"),
+    "SN-003": ("SN-003", "Z-003"),
+}
+
+def map_node(raw_id: str) -> tuple[str, str]:
+    clean = raw_id.strip().upper().replace(" ", "_")
+    if clean in NODE_MAPPING:
+        return NODE_MAPPING[clean]
+    for key, val in NODE_MAPPING.items():
+        if key in clean:
+            return val
+    return ("SN-001", "Z-001")
+
+
 class DashboardSync:
     def __init__(self, dashboard_url: str = "http://localhost:3000"):
         self.dashboard_url = dashboard_url.rstrip("/")
         DATA_FILE.parent.mkdir(parents=True, exist_ok=True)
+        self.node_last_seen: dict[str, float] = {}
         self.cached_state = None
         self._load_initial_state()
 
@@ -24,57 +51,138 @@ class DashboardSync:
         if DATA_FILE.exists():
             try:
                 self.cached_state = json.loads(DATA_FILE.read_text(encoding="utf-8"))
+                for n in self.cached_state.get("nodes", []):
+                    self.node_last_seen[n["id"]] = time.time()
                 return
             except Exception:
                 pass
 
         self.cached_state = {
-            "schema_version": "1.0",
+            "schema_version": "1.1",
             "is_live": True,
             "last_updated": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
             "stage": 0,
+            "scenario": "normal",
+            "overall_state": "NORMAL",
             "nodes": [
-                {"id": "N1", "battery": 92, "rssi": -33, "lastSeen": "calibrating", "tilt": 0.0, "displacement": 0.0, "vibration": 0.03, "healthy": True},
-                {"id": "N2", "battery": 88, "rssi": -45, "lastSeen": "calibrating", "tilt": 0.0, "displacement": 0.0, "vibration": 0.03, "healthy": True},
-                {"id": "N3", "battery": 85, "rssi": -52, "lastSeen": "calibrating", "tilt": 0.0, "displacement": 0.0, "vibration": 0.03, "healthy": True}
+                {
+                    "id": "SN-001", "zoneId": "Z-001", "battery": 92, "rssi": -33,
+                    "lastSeen": "just now", "tilt": 0.0, "displacement": 0.0, "deformationRate": 0.02,
+                    "vibration": 0.03, "healthy": True, "quality": "GOOD",
+                    "modelClass": "normal", "modelConfidence": 0.95,
+                    "healthMessage": "Nominal telemetry · Calibrating baseline"
+                },
+                {
+                    "id": "SN-002", "zoneId": "Z-002", "battery": 87, "rssi": -45,
+                    "lastSeen": "just now", "tilt": 0.0, "displacement": 0.0, "deformationRate": 0.02,
+                    "vibration": 0.03, "healthy": True, "quality": "GOOD",
+                    "modelClass": "normal", "modelConfidence": 0.95,
+                    "healthMessage": "Nominal telemetry · Calibrating baseline"
+                },
+                {
+                    "id": "SN-003", "zoneId": "Z-003", "battery": 82, "rssi": -52,
+                    "lastSeen": "just now", "tilt": 0.0, "displacement": 0.0, "deformationRate": 0.02,
+                    "vibration": 0.03, "healthy": True, "quality": "GOOD",
+                    "modelClass": "normal", "modelConfidence": 0.95,
+                    "healthMessage": "Nominal telemetry · Calibrating baseline"
+                }
             ],
             "zones": [
-                {"id": "Z1", "name": "Initial deformation", "state": "NORMAL", "trend": "Stable", "direction": "East", "confidence": "HIGH", "evidence": ["Calibrating baseline..."], "assetDistanceM": 120},
-                {"id": "Z2", "name": "Developing deformation", "state": "NORMAL", "trend": "Stable", "direction": "—", "confidence": "HIGH", "evidence": ["No material deformation evidence"], "assetDistanceM": 84},
-                {"id": "Z3", "name": "Impact-direction zone", "state": "NORMAL", "trend": "Stable", "direction": "—", "confidence": "HIGH", "evidence": ["No material deformation evidence"], "assetDistanceM": 48}
+                {
+                    "id": "Z-001", "name": "Western panel edge", "state": "NORMAL",
+                    "trend": "Stable", "direction": "East", "confidence": "HIGH",
+                    "evidence": ["Calibrating baseline..."], "assetDistanceM": 120
+                },
+                {
+                    "id": "Z-002", "name": "Central convergence corridor", "state": "NORMAL",
+                    "trend": "Stable", "direction": "—", "confidence": "HIGH",
+                    "evidence": ["No material deformation evidence"], "assetDistanceM": 84
+                },
+                {
+                    "id": "Z-003", "name": "Asset-side monitoring area", "state": "NORMAL",
+                    "trend": "Stable", "direction": "—", "confidence": "HIGH",
+                    "evidence": ["No material deformation evidence"], "assetDistanceM": 46
+                }
             ],
-            "alerts": []
+            "alerts": [],
+            "local_monitoring": "ACTIVE",
+            "cloud": "CONNECTED",
+            "ml_adapter": "READY",
+            "data_source": "LIVE_HARDWARE"
         }
+        for n in self.cached_state["nodes"]:
+            self.node_last_seen[n["id"]] = time.time()
 
     def update_sample(self, o):
         """Called whenever inference_pipeline emits a SampleOutput o."""
         try:
-            # Map node: NODE_01 / NODE_1 -> N1
-            raw_id = o.node.upper().replace("NODE_", "N").replace("NODE", "N")
-            node_id = f"N{int(raw_id[1:])}" if raw_id.startswith("N") and raw_id[1:].isdigit() else raw_id
+            node_id, zone_id = map_node(o.node)
+            now = time.time()
+            self.node_last_seen[node_id] = now
 
             f = o.features
             tilt = round(float(f.get("tilt_deg", 0.0)), 2)
             disp = round(float(f.get("displacement_mm", 0.0)), 2)
             vib = round(float(f.get("vibration_rms", 0.0)), 3)
+            def_rate = round(disp * 0.05, 2)
 
-            # Update node in state
+            # Check for unrealistic measurements
+            is_unrealistic = False
+            unrealistic_reason = ""
+            if tilt > 90.0:
+                is_unrealistic = True
+                unrealistic_reason = f"Tilt {tilt}° exceeds 90° physical limit"
+            elif abs(disp) > 500.0:
+                is_unrealistic = True
+                unrealistic_reason = f"Displacement {disp}mm exceeds 500mm physical limit"
+            elif vib > 15.0:
+                is_unrealistic = True
+                unrealistic_reason = f"Vibration {vib}g exceeds sensor saturation"
+
+            # Update node in cached state
             nodes = self.cached_state.get("nodes", [])
-            node_found = False
+            target = None
             for n in nodes:
                 if n["id"] == node_id:
-                    n["tilt"] = tilt
-                    n["displacement"] = disp
-                    n["vibration"] = vib
-                    n["lastSeen"] = "just now"
-                    n["healthy"] = True
-                    node_found = True
+                    target = n
                     break
-            if not node_found:
-                nodes.append({
-                    "id": node_id, "battery": 90, "rssi": -35,
-                    "lastSeen": "just now", "tilt": tilt, "displacement": disp, "vibration": vib, "healthy": True
-                })
+            if not target:
+                target = {
+                    "id": node_id, "zoneId": zone_id, "battery": 90, "rssi": -35,
+                    "lastSeen": "just now", "tilt": tilt, "displacement": disp,
+                    "deformationRate": def_rate, "vibration": vib, "healthy": True,
+                    "quality": "GOOD", "modelClass": o.top_class, "modelConfidence": round(o.top_p, 2),
+                    "healthMessage": "Nominal telemetry"
+                }
+                nodes.append(target)
+
+            target["tilt"] = tilt
+            target["displacement"] = disp
+            target["deformationRate"] = def_rate
+            target["vibration"] = vib
+            target["modelClass"] = o.top_class
+            target["modelConfidence"] = round(o.top_p, 2)
+
+            if is_unrealistic:
+                target["healthy"] = False
+                target["quality"] = "DEGRADED"
+                target["healthMessage"] = f"Unrealistic measurement: {unrealistic_reason}"
+            else:
+                target["healthy"] = True
+                target["quality"] = "GOOD"
+                target["lastSeen"] = "just now"
+                target["healthMessage"] = "Nominal telemetry · All checks passed"
+
+            # Check 30-second silence for ALL nodes
+            for n in nodes:
+                nid = n["id"]
+                last_time = self.node_last_seen.get(nid, now)
+                elapsed = now - last_time
+                if elapsed > 30.0:
+                    n["healthy"] = False
+                    n["quality"] = "UNAVAILABLE"
+                    n["lastSeen"] = f">30s ago (no signal: {int(elapsed)}s)"
+                    n["healthMessage"] = "Node is not sending signals (>30s silence)"
 
             # Determine risk stage and category
             top_class = o.top_class
@@ -108,13 +216,13 @@ class DashboardSync:
                 trend = "Stable"
 
             self.cached_state["stage"] = stage
+            self.cached_state["overall_state"] = risk_state
             self.cached_state["is_live"] = True
             self.cached_state["last_updated"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
 
-            # Update Zone state
+            # Update Zones
             zones = self.cached_state.get("zones", [])
             if zones:
-                # Update Zone 1 (or corresponding zone)
                 z1 = zones[0]
                 z1["state"] = risk_state
                 z1["trend"] = trend
@@ -140,15 +248,17 @@ class DashboardSync:
             # Update alerts
             if stage >= 4 or o.alert_fired:
                 self.cached_state["alerts"] = [{
-                    "id": f"ALT-{int(time.time()) % 1000:03d}",
-                    "zoneId": "Z1",
+                    "id": f"ALT-{int(now) % 1000:03d}",
+                    "zoneId": zone_id,
+                    "nodeId": node_id,
                     "severity": "CRITICAL" if stage == 5 else "HIGH",
-                    "title": f"Z1 ({node_id}): Subsidence precursor confirmed by RF model",
+                    "title": f"{zone_id} ({node_id}): Subsidence precursor confirmed by RF model",
                     "summary": f"Persistent ground deformation detected (top class: {top_class}, conf: {top_p}%, status: {status}).",
                     "evidence": z1["evidence"],
                     "confidence": "HIGH",
                     "lifecycle": "NEW",
-                    "created": "just now"
+                    "created": "just now",
+                    "recommendedAction": "Verify field conditions and trigger site response protocol." if stage >= 5 else "Inspect the affected zone."
                 }]
             elif stage == 0 and not o.alert_fired:
                 self.cached_state["alerts"] = []
@@ -161,8 +271,7 @@ class DashboardSync:
             # Optional HTTP sync if dashboard API is listening
             self._post_http(node_id, o, stage, risk_state)
 
-        except Exception as e:
-            # Non-fatal sync error
+        except Exception:
             pass
 
     def _post_http(self, node_id, o, stage, risk_state):
