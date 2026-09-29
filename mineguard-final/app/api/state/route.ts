@@ -17,7 +17,7 @@ export async function GET(request: Request) {
   const rawStage = Number(url.searchParams.get("stage") ?? 0);
   const stage = Number.isFinite(rawStage) ? Math.max(0, Math.min(5, rawStage)) : 0;
   const scenario = (url.searchParams.get("scenario") ?? "progressive") as ScenarioKey;
-  const safeScenario: ScenarioKey = ["progressive", "false_local", "normal"].includes(scenario) ? scenario : "progressive";
+  const safeScenario: ScenarioKey = (["progressive", "false_local", "normal", "persistent", "offline_gap"] as ScenarioKey[]).includes(scenario) ? scenario : "progressive";
   const zones = zonesFor(stage, safeScenario);
 
   return NextResponse.json({

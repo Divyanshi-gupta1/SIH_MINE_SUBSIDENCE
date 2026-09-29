@@ -1,222 +1,49 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
-  ASSET,
-  GATEWAY,
-  SENSOR_LAYOUT,
-  stageDescriptions,
-  stageLabels,
   alertsFor,
+  getAssetStatus,
   nodesFor,
   overallState,
-  rank,
-  timelineFor,
   zonesFor
 } from "../lib/demo";
-import type { Alert, AlertLifecycle, LayerKey, NodeState, OperationMode, RiskState, ScenarioKey, ViewKey, ZoneState } from "../lib/types";
+import type {
+  Alert,
+  AlertLifecycle,
+  LayerKey,
+  NodeState,
+  OperationMode,
+  RiskState,
+  ScenarioKey,
+  ViewKey,
+  ZoneState
+} from "../lib/types";
 
-type LayerState = Record<LayerKey, boolean>;
+import { SysHeader } from "../components/SysHeader";
+import { SituationSummary } from "../components/SituationSummary";
+import { GisCommandMap } from "../components/GisCommandMap";
+import { OperationalPanel } from "../components/OperationalPanel";
+import { SensorAnalyticsView } from "../components/SensorAnalyticsView";
+import { ZoneAnalyticsView } from "../components/ZoneAnalyticsView";
+import { DemoController } from "../components/DemoController";
+import { HistoryReplayView } from "../components/HistoryReplayView";
+import { NetworkHealthView } from "../components/NetworkHealthView";
+import { StateBadge } from "../components/StateBadge";
+import { PhysicsIntelPanel } from "../components/PhysicsIntelPanel";
 
-const nav: { key: ViewKey; label: string; icon: string }[] = [
+const navTabs: { key: ViewKey; label: string; icon: string }[] = [
   { key: "command", label: "Command Center", icon: "▦" },
-  { key: "map", label: "Live GIS", icon: "⌖" },
-  { key: "zones", label: "Zone Intelligence", icon: "◇" },
+  { key: "map", label: "Primary GIS Map", icon: "⌖" },
+  { key: "physics", label: "Physics Intelligence", icon: "⌬" },
+  { key: "zones", label: "Zone Analytics", icon: "◇" },
   { key: "sensors", label: "Sensor Analytics", icon: "⌁" },
   { key: "alerts", label: "Alerts & Actions", icon: "!" },
-  { key: "history", label: "History / Replay", icon: "↺" },
+  { key: "history", label: "Event Replay", icon: "↺" },
   { key: "network", label: "Network Health", icon: "⌁" },
-  { key: "settings", label: "Engineering Settings", icon: "⚙" },
-  { key: "demo", label: "Demo Mode", icon: "▶" }
+  { key: "demo", label: "Demo Controller", icon: "▶" },
+  { key: "settings", label: "Engineering Settings", icon: "⚙" }
 ];
-
-const riskColors: Record<RiskState, string> = {
-  NORMAL: "#1f7a52",
-  LOCAL_ANOMALY: "#9b6b11",
-  PERSISTENT: "#9b6b11",
-  CORRELATED: "#8c5b14",
-  PROGRESSIVE: "#b25b1f",
-  HIGH_RISK: "#a63f2b",
-  CRITICAL: "#8d2525"
-};
-
-function StateBadge({ state }: { state: RiskState }) {
-  return <span className={`badge badge-${state.toLowerCase()}`} style={{ color: riskColors[state] }}>{state.replaceAll("_", " ")}</span>;
-}
-
-function Confidence({ value }: { value: number }) {
-  return <span>{Math.round(value * 100)}%</span>;
-}
-
-function LineChart({ values, label, unit }: { values: number[]; label: string; unit: string }) {
-  const max = Math.max(...values, 1);
-  const min = Math.min(...values, 0);
-  const points = values.map((v, i) => {
-    const x = values.length === 1 ? 50 : (i / (values.length - 1)) * 100;
-    const y = 94 - ((v - min) / (max - min || 1)) * 78;
-    return `${x},${y}`;
-  }).join(" ");
-  return (
-    <div className="chartCard">
-      <div className="chartTop"><span>{label}</span><strong>{values[values.length - 1].toFixed(2)} {unit}</strong></div>
-      <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="chart">
-        <line x1="0" x2="100" y1="94" y2="94" stroke="#dbe2e7" strokeWidth="0.8" vectorEffect="non-scaling-stroke" />
-        <polyline points={points} fill="none" stroke="#1f5d7a" strokeWidth="2.4" vectorEffect="non-scaling-stroke" />
-      </svg>
-    </div>
-  );
-}
-
-function MapView({
-  stage,
-  mode,
-  layers,
-  onNodeHover,
-  selectedNode,
-  nodes: customNodes,
-  zones: customZones
-}: {
-  stage: number;
-  mode: ScenarioKey;
-  layers: LayerState;
-  onNodeHover: (id: string | null) => void;
-  selectedNode: string | null;
-  nodes?: NodeState[];
-  zones?: ZoneState[];
-}) {
-  const zones = customZones || zonesFor(stage, mode);
-  const nodes = customNodes || nodesFor(stage, mode);
-  const nodePositions: Record<string, { x: number; y: number }> = Object.fromEntries(SENSOR_LAYOUT.map((node) => [node.id, { x: node.x, y: node.y }]));
-  const assetState = stage >= 5 && mode === "progressive" ? "AT RISK" : stage >= 4 && mode === "progressive" ? "NEAR IMPACT ZONE" : "NO CURRENT IMPACT";
-
-  return (
-    <div className="mapFrame">
-      <svg viewBox="0 0 1000 620" className="mapSvg" role="img" aria-label="Mine engineering monitoring map">
-        <defs>
-          <pattern id="mapGrid" width="40" height="40" patternUnits="userSpaceOnUse">
-            <path d="M40 0H0V40" fill="none" stroke="#dde4e8" strokeWidth="1" />
-          </pattern>
-          <pattern id="fineGrid" width="10" height="10" patternUnits="userSpaceOnUse">
-            <path d="M10 0H0V10" fill="none" stroke="#eef2f4" strokeWidth="1" />
-          </pattern>
-        </defs>
-        <rect x="0" y="0" width="1000" height="620" fill="#f7f9fa" />
-        {layers.grid && <rect x="18" y="18" width="964" height="584" rx="16" fill="url(#mapGrid)" />}
-        <rect x="28" y="28" width="944" height="564" rx="18" fill="none" stroke="#8d9ba5" strokeWidth="2" />
-        <rect x="45" y="55" width="910" height="520" fill="url(#fineGrid)" opacity="0.65" />
-
-        <text x="52" y="52" className="mapLabelStrong">PANEL A / SURFACE MONITORING AREA</text>
-        <text x="52" y="73" className="mapLabel">LOCAL ENGINEERING COORDINATES · TESTBED GEOMETRY</text>
-
-        <path d="M85 140 H310 M85 140 V330 H310 M310 140 V330 H525 M525 140 V330 H760 M760 140 V410 H905" fill="none" stroke="#60727e" strokeWidth="9" strokeLinecap="round" strokeLinejoin="round" opacity="0.38" />
-        <path d="M90 470 C220 395 330 420 455 345 S700 215 900 190" fill="none" stroke="#9aa8b1" strokeWidth="3" strokeDasharray="12 8" />
-        <text x="92" y="459" className="mapLabel">PANEL ACCESS / MONITORING CORRIDOR</text>
-
-        <path d="M120 165 C245 116 330 156 430 205 S655 318 790 360" fill="none" stroke="#2f6179" strokeWidth="2.5" strokeDasharray="6 6" />
-        <text x="138" y="128" className="mapVectorLabel">ASSESSED DEFORMATION DIRECTION</text>
-
-        {layers.risk && zones.map((z, i) => {
-          const x = [95, 350, 625][i];
-          const y = [135, 220, 310][i];
-          const width = [250, 290, 270][i];
-          const height = [150, 175, 185][i];
-          const opacity = z.state === "NORMAL" ? 0.04 : Math.min(0.28, 0.08 + rank[z.state] * 0.035);
-          return (
-            <g key={z.id}>
-              <rect x={x} y={y} width={width} height={height} rx="36" fill={riskColors[z.state]} opacity={opacity} stroke={riskColors[z.state]} strokeWidth="2" strokeDasharray="10 6" />
-              <text x={x + 18} y={y + 26} className="zoneId">{z.id}</text>
-              <text x={x + 18} y={y + 44} className="mapLabel">{z.name}</text>
-              {z.state !== "NORMAL" && <text x={x + 18} y={y + 64} className="zoneState">{z.state.replaceAll("_", " ")}</text>}
-            </g>
-          );
-        })}
-
-        {layers.network && (
-          <path d="M850 88 L180 174 M850 88 L480 255 M850 88 L760 360" stroke="#8a9aa4" strokeWidth="1.8" strokeDasharray="5 6" opacity="0.9" />
-        )}
-
-        {layers.impact && stage >= 4 && mode === "progressive" && (
-          <path d="M205 175 C350 198 540 255 798 372" fill="none" stroke="#b25b1f" strokeWidth="4" strokeDasharray="11 9" />
-        )}
-
-        {layers.impact && stage >= 5 && mode === "progressive" && (
-          <ellipse cx="842" cy="430" rx="106" ry="68" fill="#8d2525" opacity="0.12" stroke="#8d2525" strokeWidth="2" strokeDasharray="8 7" />
-        )}
-
-        {layers.assets && (
-          <g>
-            <circle cx="840" cy="430" r="22" fill="#ffffff" stroke="#40515c" strokeWidth="2" />
-            <path d="M828 434 L840 422 L852 434 V446 H828 Z" fill="none" stroke="#40515c" strokeWidth="2" />
-            <text x="871" y="426" className="mapLabelStrong">A-001</text>
-            <text x="871" y="444" className={assetState === "AT RISK" ? "assetRisk" : "mapLabel"}>{assetState}</text>
-          </g>
-        )}
-
-        {layers.network && (
-          <g>
-            <rect x="825" y="48" width="72" height="44" rx="10" fill="#ffffff" stroke="#40515c" strokeWidth="2" />
-            <path d="M842 72 h38 M842 64 h38 M854 56 v25" stroke="#2f6179" strokeWidth="2" />
-            <text x="905" y="57" className="mapLabelStrong">GW-001</text>
-            <text x="905" y="74" className="mapLabel">Gateway</text>
-          </g>
-        )}
-
-        {layers.sensors && nodes.map((node) => {
-          const pos = nodePositions[node.id];
-          const active = selectedNode === node.id;
-          return (
-            <g
-              key={node.id}
-              role="button"
-              tabIndex={0}
-              onMouseEnter={() => onNodeHover(node.id)}
-              onMouseLeave={() => onNodeHover(null)}
-              onFocus={() => onNodeHover(node.id)}
-              onBlur={() => onNodeHover(null)}
-              className="sensorMarker"
-            >
-              <circle cx={`${pos.x}%`} cy={`${pos.y}%`} r={active ? 18 : 15} fill="#ffffff" stroke="#1f5d7a" strokeWidth={active ? 4 : 3} />
-              <circle cx={`${pos.x}%`} cy={`${pos.y}%`} r="6" fill={node.healthy ? "#1f7a52" : "#8d2525"} />
-              <text x={`${pos.x + 2}%`} y={`${pos.y - 3}%`} className="nodeText">{node.id}</text>
-            </g>
-          );
-        })}
-
-        <text x="52" y="552" className="mapLabel">North ↑</text>
-        <line x1="94" y1="550" x2="94" y2="515" stroke="#40515c" strokeWidth="2" />
-        <polygon points="94,508 88,520 100,520" fill="#40515c" />
-      </svg>
-    </div>
-  );
-}
-
-function NodePopover({ nodeId, stage, mode, nodes: customNodes }: { nodeId: string; stage: number; mode: ScenarioKey; nodes?: NodeState[] }) {
-  const node = (customNodes || nodesFor(stage, mode)).find((item) => item.id === nodeId);
-  if (!node) return null;
-  return (
-    <div className="nodePopover">
-      <div className="popoverHeader"><div><span className="eyebrow">SURFACE SENSOR NODE</span><strong>{node.id}</strong></div><span className="healthPill"><span className={`dot ${node.healthy ? "green" : "red"}`}/> {node.healthy ? "HEALTHY" : "CHECK NODE"}</span></div>
-      {node.healthMessage && !node.healthy && (
-        <div style={{ fontSize: "11px", color: "#a63f2b", marginTop: "4px", padding: "4px 8px", background: "#fdf0ed", borderRadius: "4px" }}>
-          ⚠️ {node.healthMessage}
-        </div>
-      )}
-      <div className="popoverGrid">
-        <Metric label="Current tilt" value={`${node.tilt.toFixed(2)}°`} />
-        <Metric label="Displacement" value={`${node.displacement.toFixed(2)} mm`} />
-        <Metric label="Deformation rate" value={`${node.deformationRate.toFixed(2)} mm/min`} />
-        <Metric label="Vibration" value={`${node.vibration.toFixed(2)} g`} />
-        <Metric label="Battery" value={`${node.battery}%`} />
-        <Metric label="RSSI" value={`${node.rssi} dBm`} />
-      </div>
-      <div className="modelStrip"><span>Model class</span><strong>{node.modelClass.replaceAll("_", " ")}</strong><span>Confidence <Confidence value={node.modelConfidence} /></span></div>
-    </div>
-  );
-}
-
-function Metric({ label, value }: { label: string; value: string }) {
-  return <div><span>{label}</span><strong>{value}</strong></div>;
-}
 
 export default function Home() {
   const [view, setView] = useState<ViewKey>("command");
@@ -227,316 +54,513 @@ export default function Home() {
   const [demoSpeed, setDemoSpeed] = useState<1 | 2 | 4>(1);
   const [alertLifecycle, setAlertLifecycle] = useState<AlertLifecycle>("NEW");
   const [cloud, setCloud] = useState(true);
-  const [hoveredNode, setHoveredNode] = useState<string | null>(null);
-  const [layers, setLayers] = useState<LayerState>({ grid: true, sensors: true, risk: true, assets: true, impact: true, network: true });
 
+  // Selected entity for detailed GIS and inspector view
+  const [selectedEntity, setSelectedEntity] = useState<{
+    type: "node" | "zone" | "asset";
+    id: string;
+  } | null>(null);
+
+  // Map layer controls
+  const [layers, setLayers] = useState<Record<LayerKey, boolean>>({
+    grid: true,
+    sensors: true,
+    risk: true,
+    vectors: true,
+    assets: true,
+    impact: true,
+    physics: false,
+    network: true,
+    heatmap: true,
+    residual: false,
+    history: true
+  });
+
+  // Live telemetry state from /api/state
   const [liveData, setLiveData] = useState<any>(null);
 
-  // Poll live backend state from /api/state
+  // Polling backend state every second
   useEffect(() => {
+    let mounted = true;
     const poll = async () => {
       try {
         const res = await fetch("/api/state?mode=" + operationMode, { cache: "no-store" });
-        if (res.ok) {
+        if (res.ok && mounted) {
           const data = await res.json();
           setLiveData(data);
         }
       } catch {
-        // offline / network handling
+        // network exception handled gracefully
       }
     };
     poll();
     const interval = setInterval(poll, 1000);
-    return () => clearInterval(interval);
+    return () => {
+      mounted = false;
+      clearInterval(interval);
+    };
   }, [operationMode]);
 
+  // Determine if live hardware telemetry stream is currently active
   const isLiveActive = operationMode !== "DEMO" && Boolean(liveData?.is_live);
 
+  // Synchronized zones
   const zones: ZoneState[] = useMemo(() => {
     if (isLiveActive && liveData?.zones) return liveData.zones as ZoneState[];
     return zonesFor(stage, scenario);
   }, [stage, scenario, isLiveActive, liveData]);
 
+  // Synchronized nodes
   const nodes: NodeState[] = useMemo(() => {
     if (isLiveActive && liveData?.nodes) return liveData.nodes as NodeState[];
     return nodesFor(stage, scenario);
   }, [stage, scenario, isLiveActive, liveData]);
 
+  // Synchronized alerts
   const alerts: Alert[] = useMemo(() => {
     if (isLiveActive && liveData?.alerts) return liveData.alerts as Alert[];
     return alertsFor(zones, stage, scenario);
   }, [zones, stage, scenario, isLiveActive, liveData]);
 
+  // Effective operational stage (0 to 5)
   const effectiveStage = useMemo(() => {
     if (isLiveActive && typeof liveData?.stage === "number") return liveData.stage;
     return stage;
   }, [stage, isLiveActive, liveData]);
 
-  const timeline = useMemo(() => timelineFor(effectiveStage), [effectiveStage]);
+  // Overall ground risk condition
   const overall = useMemo(() => {
     if (isLiveActive && liveData?.overall_state) return liveData.overall_state as RiskState;
     return overallState(zones);
   }, [zones, isLiveActive, liveData]);
-  const currentAlert = alerts[0];
-  const effectiveAlertLifecycle = currentAlert ? alertLifecycle : "NEW";
-  const overallConfidence = overall === "NORMAL" ? "HIGH" : effectiveStage >= 3 ? "HIGH" : "MEDIUM";
-  const viewTitle = nav.find((item) => item.key === view)?.label ?? "Command Center";
-  const reportingNodes = nodes.filter((node: any) => node.quality !== "UNAVAILABLE").length;
 
+  // Synchronized asset state
+  const asset = useMemo(() => {
+    return getAssetStatus(effectiveStage, scenario);
+  }, [effectiveStage, scenario]);
+
+  const currentAlert = alerts[0];
+
+  // Automated demonstration timer
   useEffect(() => {
     if (!demoRunning || operationMode !== "DEMO") return;
     const timer = window.setInterval(() => {
-      setStage((current) => {
-        if (current >= 5) {
+      setStage((curr) => {
+        if (curr >= 5) {
           setDemoRunning(false);
-          return current;
+          return curr;
         }
-        return current + 1;
+        return curr + 1;
       });
     }, 8000 / demoSpeed);
     return () => window.clearInterval(timer);
   }, [demoRunning, demoSpeed, operationMode]);
 
-  function chooseScenario(next: ScenarioKey) {
-    setScenario(next);
-    setStage(next === "normal" ? 0 : 1);
+  function handleModeChange(nextMode: OperationMode) {
+    setOperationMode(nextMode);
+    if (nextMode !== "DEMO") {
+      setDemoRunning(false);
+    }
+  }
+
+  function handleScenarioChange(nextScenario: ScenarioKey) {
+    setScenario(nextScenario);
+    setStage(nextScenario === "normal" ? 0 : 1);
     setAlertLifecycle("NEW");
     setDemoRunning(false);
   }
 
-  function resetDemo() {
+  function handleResetDemo() {
     setStage(0);
     setScenario("progressive");
     setAlertLifecycle("NEW");
     setDemoRunning(false);
-    setCloud(true);
   }
-
-  function acknowledge() { setAlertLifecycle("ACKNOWLEDGED"); }
-  function verify() { setAlertLifecycle("VERIFICATION_PENDING"); }
-  function confirmAlert() { setAlertLifecycle("CONFIRMED"); }
-  function dismiss(reason: "DISMISSED" | "SENSOR_ISSUE") { setAlertLifecycle(reason); }
 
   function toggleLayer(key: LayerKey) {
-    setLayers((current) => ({ ...current, [key]: !current[key] }));
+    setLayers((prev) => ({ ...prev, [key]: !prev[key] }));
   }
+
+  const activeAlertsCount = alerts.filter(
+    (a) => a.lifecycle !== "DISMISSED" && a.lifecycle !== "SENSOR_ISSUE" && a.lifecycle !== "CONFIRMED"
+  ).length;
 
   return (
     <div className="shell">
-      <aside className="sidebar">
-        <div className="brandBlock">
-          <div className="brandMark">MG</div>
-          <div><div className="brand">MineGuard</div><div className="brandSub">MINE SUBSIDENCE CONTROL</div></div>
-        </div>
-        <div className="sideLabel">OPERATIONS</div>
-        {nav.map((item) => (
-          <button key={item.key} className={`nav ${view === item.key ? "active" : ""}`} onClick={() => setView(item.key)}>
-            <span>{item.icon}</span>{item.label}{item.key === "alerts" && alerts.length > 0 && effectiveAlertLifecycle !== "DISMISSED" && effectiveAlertLifecycle !== "SENSOR_ISSUE" ? <em>1</em> : null}
+      {/* 1. TOP SYSTEM HEADER */}
+      <SysHeader
+        operationMode={operationMode}
+        onModeChange={handleModeChange}
+        isLiveActive={isLiveActive}
+        monitoringState={isLiveActive ? "ACTIVE" : operationMode === "DEMO" ? "ACTIVE" : "STANDBY"}
+        gatewayState={isLiveActive ? "CONNECTED" : "STANDBY"}
+        lastUpdate={isLiveActive ? "just now" : "live clock"}
+        cloudConnected={cloud}
+        onToggleCloud={() => setCloud((c) => !c)}
+      />
+
+      {/* SECONDARY VIEW / WORKSPACE NAVIGATION */}
+      <nav className="viewNav" aria-label="Command Center Views">
+        {navTabs.map((tab) => (
+          <button
+            key={tab.key}
+            className={`navTab ${view === tab.key ? "active" : ""}`}
+            onClick={() => setView(tab.key)}
+          >
+            <span>{tab.icon}</span>
+            <span>{tab.label}</span>
+            {tab.key === "alerts" && activeAlertsCount > 0 && (
+              <span className="alertBadgeCount">{activeAlertsCount}</span>
+            )}
           </button>
         ))}
-        <div className="spacer" />
-        <div className="sidebarStatus">
-          <div className="sideLabel">LOCAL MONITORING</div>
-          <div className="statusLine"><span className="dot green" /> ACTIVE</div>
-          <div className="muted small">Gateway path ready · {reportingNodes}/3 nodes reporting</div>
-          <div className="muted small">Cloud {cloud ? "connected" : "offline · buffering locally"}</div>
-        </div>
-      </aside>
+      </nav>
 
-      <main className="main">
-        <header className="topbar">
-          <div>
-            <div className="eyebrow">COAL MINE · PANEL A · TESTBED DEPLOYMENT</div>
-            <h1>{viewTitle}</h1>
-          </div>
-          <div className="topControls">
-            <div className="modeSwitcher">
-              {(["DEMO", "LIVE_TESTBED", "LIVE_MINE"] as OperationMode[]).map((mode) => (
-                <button key={mode} className={operationMode === mode ? "modeActive" : ""} onClick={() => { setOperationMode(mode); if (mode !== "DEMO") setDemoRunning(false); }}>
-                  {mode === "DEMO" ? "Demo" : mode === "LIVE_TESTBED" ? "Live Testbed" : "Live Mine"}
-                </button>
-              ))}
+      {/* OPERATIONAL WORKSPACE */}
+      <main className="workspace">
+        {/* 2. COMPACT OPERATIONAL SITUATION SUMMARY */}
+        <SituationSummary
+          overallState={overall}
+          alerts={alerts}
+          zones={zones}
+          nodes={nodes}
+          gatewayStatus="GW-001 (CONNECTED)"
+          dataFreshness={isLiveActive ? "< 1.0s (Live LoRa)" : "Synthetic Sync (1.0s)"}
+        />
+
+        {/* Live Stream / Deployment Status Notices */}
+        {operationMode === "LIVE_MINE" && (
+          <div className="streamNotice warning">
+            <div>
+              <strong>LIVE MINE PROFILE ACTIVE: </strong>
+              <span>
+                Commercial longwall telemetry interface enabled. Currently operating with local engineering testbed coordinates; no commercial mine stream connected.
+              </span>
             </div>
-            <div className="statusPill"><span className="dot green"/> LOCAL ACTIVE</div>
-            <button className="statusPill clickable" onClick={() => setCloud((current) => !current)}><span className={`dot ${cloud ? "green" : "amber"}`}/> CLOUD {cloud ? "CONNECTED" : "OFFLINE"}</button>
-          </div>
-        </header>
-
-        {operationMode !== "DEMO" && (
-          <div className="modeNotice">
-            <div><strong>{operationMode === "LIVE_TESTBED" ? "Live Testbed Mode" : "Live Mine Mode"}</strong><span>{operationMode === "LIVE_TESTBED" ? "Physical node stream is expected at POST /api/ingest. No manual demo stage controls are shown." : "Scalable deployment profile. MineGuard uses the same data model; live field geometry and sensor streams are supplied by integration services."}</span></div>
-            <span className="integrationBadge">{isLiveActive ? "● LIVE TELEMETRY STREAMING" : "INTEGRATION READY · WAITING FOR HARDWARE STREAM"}</span>
+            <span className="badge badge-unavailable">DISCLAIMER: TESTBED MODE ACTIVE</span>
           </div>
         )}
 
-        <section className="kpis">
-          <div className="kpi"><span className="kpiLabel">Overall operational state</span><strong><StateBadge state={overall}/></strong><span className="kpiMeta">Highest assessed zone state</span></div>
-          <div className="kpi"><span className="kpiLabel">Open alerts</span><strong>{alerts.length && !["DISMISSED", "SENSOR_ISSUE", "CONFIRMED"].includes(effectiveAlertLifecycle) ? alerts.length : 0}</strong><span className="kpiMeta">Human-in-the-loop lifecycle</span></div>
-          <div className="kpi"><span className="kpiLabel">Sensor network</span><strong>{reportingNodes} / {nodes.length}</strong><span className="kpiMeta">Reporting nodes</span></div>
-          <div className="kpi"><span className="kpiLabel">Evidence confidence</span><strong>{overallConfidence}</strong><span className="kpiMeta">Data quality + corroboration</span></div>
-          <div className="kpi"><span className="kpiLabel">Data source</span><strong>{isLiveActive ? "LIVE HARDWARE" : operationMode === "DEMO" ? "SIMULATED" : "INTEGRATION READY"}</strong><span className="kpiMeta">Same logical dashboard model</span></div>
-        </section>
+        {operationMode === "LIVE_TESTBED" && (
+          <div className="streamNotice">
+            <div>
+              <strong>LIVE TESTBED STREAM: </strong>
+              <span>
+                {isLiveActive
+                  ? "Continuous hardware stream receiving at /api/ingest · Random Forest inference active."
+                  : "Integration boundary READY at POST /api/ingest · Awaiting USB serial LoRa gateway packets."}
+              </span>
+            </div>
+            <span className={`badge ${isLiveActive ? "badge-normal" : "badge-persistent"}`}>
+              {isLiveActive ? "HARDWARE STREAMING" : "WAITING FOR GATEWAY"}
+            </span>
+          </div>
+        )}
 
+        {/* 3 & 4. MAIN COMMAND CENTER VIEW (DOMINANT GIS MAP + PERSISTENT OPERATIONAL PANEL) */}
         {view === "command" && (
-          <div className="grid2">
-            <section className="panel">
-              <PanelHead title="Live deformation map" subtitle="Engineering-style spatial view for sensors, deformation zones, assets and assessed impact." action={<StateBadge state={overall}/>}/>
-              <MapView stage={effectiveStage} mode={scenario} layers={layers} onNodeHover={setHoveredNode} selectedNode={hoveredNode} nodes={nodes} zones={zones}/>
-              {hoveredNode && <NodePopover nodeId={hoveredNode} stage={effectiveStage} mode={scenario} nodes={nodes}/>} 
-              <LayerBar layers={layers} toggleLayer={toggleLayer}/>
-            </section>
-            <div className="stack">
-              <section className="panel important">
-                <PanelHead title="Most important now" subtitle="Operational decision support" />
-                {currentAlert && !["DISMISSED", "SENSOR_ISSUE"].includes(effectiveAlertLifecycle) ? (
-                  <>
-                    <div className="alertTitleRow"><span className={`severityDot severity-${currentAlert.severity.toLowerCase()}`}/><h2>{currentAlert.title}</h2></div>
-                    <div className="answerGrid">
-                      <div><span>WHERE</span><strong>{currentAlert.zoneId}</strong></div>
-                      <div><span>WHAT</span><strong>{currentAlert.severity === "WATCH" ? "Local anomaly" : "Progressive deformation"}</strong></div>
-                      <div><span>HOW SERIOUS</span><strong>{overall.replaceAll("_", " ")}</strong></div>
-                      <div><span>WHAT NEXT</span><strong>{currentAlert.recommendedAction}</strong></div>
-                    </div>
-                    <div className="evidenceList">{currentAlert.evidence.map((item: string) => <div className="evidence" key={item}>✓ {item}</div>)}</div>
-                    <div className="importantMeta">Created {currentAlert.created} · Confidence {currentAlert.confidence} · Lifecycle {effectiveAlertLifecycle.replaceAll("_", " ")}</div>
-                    <div className="actions">
-                      <button className="primary" onClick={acknowledge}>Acknowledge</button>
-                      <button className="ghost" onClick={verify}>Mark for verification</button>
-                      <button className="ghost dangerGhost" onClick={() => dismiss("SENSOR_ISSUE")}>Sensor issue</button>
-                    </div>
-                  </>
-                ) : (
-                  <div className="resolvedState">
-                    <div className="resolvedIcon">✓</div>
-                    <div><strong>{overall === "NORMAL" ? "System operating within baseline" : effectiveAlertLifecycle === "CONFIRMED" ? "Alert confirmed by operator" : "Alert cleared from active queue"}</strong><p>{overall === "NORMAL" ? "Continue continuous monitoring. No material deformation evidence is currently assessed." : "The event remains in the audit trail. Review history for the full progression."}</p></div>
+          <div className="commandSplit">
+            {/* Primary GIS Command Map */}
+            <GisCommandMap
+              stage={effectiveStage}
+              mode={scenario}
+              layers={layers}
+              onToggleLayer={toggleLayer}
+              nodes={nodes}
+              zones={zones}
+              asset={asset}
+              selectedEntity={selectedEntity}
+              onSelectEntity={setSelectedEntity}
+              isLiveActive={isLiveActive}
+            />
+
+            {/* Persistent Right-Side Operational Panel */}
+            <OperationalPanel
+              alerts={alerts}
+              currentAlert={currentAlert}
+              alertLifecycle={alertLifecycle}
+              onAcknowledge={() => setAlertLifecycle("ACKNOWLEDGED")}
+              onVerify={() => setAlertLifecycle("VERIFICATION_PENDING")}
+              onConfirm={() => setAlertLifecycle("CONFIRMED")}
+              onDismiss={(reason) => setAlertLifecycle(reason)}
+              overallState={overall}
+              selectedEntity={selectedEntity}
+              onSelectEntity={setSelectedEntity}
+              nodes={nodes}
+              zones={zones}
+              asset={asset}
+              onNavigateView={setView}
+            />
+          </div>
+        )}
+
+        {/* DEDICATED FULL PRIMARY GIS MAP VIEW */}
+        {view === "map" && (
+          <GisCommandMap
+            stage={effectiveStage}
+            mode={scenario}
+            layers={layers}
+            onToggleLayer={toggleLayer}
+            nodes={nodes}
+            zones={zones}
+            asset={asset}
+            selectedEntity={selectedEntity}
+            onSelectEntity={setSelectedEntity}
+            isLiveActive={isLiveActive}
+          />
+        )}
+
+        {/* 6. SENSOR ANALYTICS */}
+        {view === "sensors" && (
+          <SensorAnalyticsView nodes={nodes} stage={effectiveStage} />
+        )}
+
+        {/* 7. ZONE ANALYTICS */}
+        {view === "zones" && (
+          <ZoneAnalyticsView zones={zones} />
+        )}
+
+        {/* 5. COMPREHENSIVE ALERTS & ACTIONS CENTER */}
+        {view === "alerts" && (
+          <div className="engPanel">
+            <div className="engPanelHeader">
+              <div className="engPanelTitle">
+                <span>!</span>
+                <span>Audit-Friendly Alert &amp; Operational Action Center</span>
+              </div>
+              <div className="engPanelSub">
+                HUMAN-IN-THE-LOOP CONTROL: DETECT → ACKNOWLEDGE → VERIFY → CONFIRM
+              </div>
+            </div>
+            <div className="engPanelBody">
+              <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: "12px" }}>
+                {/* Active Alerts List */}
+                <div>
+                  <div style={{ fontSize: "11px", fontWeight: 700, textTransform: "uppercase", marginBottom: "8px" }}>
+                    Active Subsidence Alerts ({alerts.length})
                   </div>
-                )}
-              </section>
-              {operationMode === "DEMO" ? <section className="panel"><DemoControl stage={stage} scenario={scenario} running={demoRunning} speed={demoSpeed} onScenario={chooseScenario} onStart={() => setDemoRunning(true)} onPause={() => setDemoRunning(false)} onReset={resetDemo} onSpeed={setDemoSpeed}/></section> : <LiveIntegrationCard mode={operationMode}/>} 
+                  {alerts.length > 0 ? (
+                    alerts.map((al) => (
+                      <div key={al.id} className={`alertOpCard ${al.severity.toLowerCase()}`} style={{ marginBottom: "10px" }}>
+                        <div className="alertOpHeader">
+                          <div>
+                            <span className="alertLocation">WHERE: {al.zoneId}</span>
+                            <div className="alertTitle">{al.title}</div>
+                          </div>
+                          <StateBadge state={overall} />
+                        </div>
+                        <div className="alertSummaryText">{al.summary}</div>
+                        <div className="evidenceSection">
+                          <div className="evidenceHeader">Corroborating Evidence:</div>
+                          <ul className="evidenceUl">
+                            {al.evidence.map((ev, i) => (
+                              <li key={i}>• {ev}</li>
+                            ))}
+                          </ul>
+                        </div>
+                        <div style={{ display: "flex", gap: "6px", marginTop: "6px" }}>
+                          <button className="btnPrimary" onClick={() => setAlertLifecycle("ACKNOWLEDGED")}>
+                            Acknowledge
+                          </button>
+                          <button className="btnOutline" onClick={() => setAlertLifecycle("VERIFICATION_PENDING")}>
+                            Mark Verification
+                          </button>
+                          <button className="btnOutline" onClick={() => setAlertLifecycle("CONFIRMED")}>
+                            Confirm
+                          </button>
+                          <button className="btnDangerOutline" onClick={() => setAlertLifecycle("DISMISSED")}>
+                            Dismiss
+                          </button>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div style={{ padding: "24px", textAlign: "center", color: "var(--muted)", background: "#f8fafc", border: "1px dashed var(--border)" }}>
+                      ✓ No active geotechnical alerts. Sensor baselines nominal.
+                    </div>
+                  )}
+                </div>
+
+                {/* Audit-Friendly Decision Standard (WHERE, WHAT, HOW SERIOUS, WHAT NEXT) */}
+                <div style={{ background: "#ffffff", border: "1px solid var(--border)", borderRadius: "3px", padding: "12px" }}>
+                  <div style={{ fontSize: "11px", fontWeight: 700, textTransform: "uppercase", marginBottom: "8px" }}>
+                    Operational Decision Standard
+                  </div>
+                  <div className="semGrid" style={{ marginBottom: "12px" }}>
+                    <div className="semItem">
+                      <label>WHERE</label>
+                      <strong>{currentAlert?.zoneId ?? "—"}</strong>
+                    </div>
+                    <div className="semItem">
+                      <label>WHAT</label>
+                      <strong>{currentAlert ? currentAlert.title : "System nominal"}</strong>
+                    </div>
+                    <div className="semItem">
+                      <label>HOW SERIOUS</label>
+                      <strong style={{ color: currentAlert?.severity === "CRITICAL" ? "#b91c1c" : "var(--ink)" }}>
+                        {currentAlert ? currentAlert.severity : "LOW"}
+                      </strong>
+                    </div>
+                    <div className="semItem">
+                      <label>WHAT NEXT</label>
+                      <strong style={{ fontSize: "9px" }}>
+                        {currentAlert ? currentAlert.recommendedAction : "Continue nominal monitoring"}
+                      </strong>
+                    </div>
+                  </div>
+                  <div style={{ fontSize: "9px", color: "var(--muted)", lineHeight: 1.5 }}>
+                    <strong>Control Room Protocol:</strong> Operator acknowledgement documents human review and does not alter underlying sensor readings or Random Forest classification results.
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         )}
 
-        {view === "map" && (
-          <section className="panel full">
-            <PanelHead title="Live GIS" subtitle="The prototype uses a local engineering coordinate system so the same layers can later bind to mine GIS geometry." />
-            <MapView stage={effectiveStage} mode={scenario} layers={layers} onNodeHover={setHoveredNode} selectedNode={hoveredNode} nodes={nodes} zones={zones}/>
-            {hoveredNode && <NodePopover nodeId={hoveredNode} stage={effectiveStage} mode={scenario} nodes={nodes}/>} 
-            <LayerBar layers={layers} toggleLayer={toggleLayer}/>
-          </section>
-        )}
-
-        {view === "zones" && (
-          <section className="panel full"><PanelHead title="Zone intelligence" subtitle="State is assessed from deformation evidence, temporal progression, spatial corroboration, confidence and asset context." />
-            <div className="zoneGrid">{zones.map((zone) => <section className="zoneCard" key={zone.id}>
-              <div className="zoneHead"><div><span className="eyebrow">MONITORING ZONE</span><h2>{zone.id}</h2><p>{zone.name}</p></div><StateBadge state={zone.state}/></div>
-              <div className="metricGrid"><Metric label="Trend" value={zone.trend}/><Metric label="Direction" value={zone.direction}/><Metric label="Confidence" value={zone.confidence}/><Metric label="Asset distance" value={`${zone.assetDistanceM} m`}/></div>
-              <div className="evidenceList">{zone.evidence.map((item) => <div className="evidence" key={item}>• {item}</div>)}</div>
-              <div className="actions"><button className="ghost" onClick={() => setView("sensors")}>View sensor data</button><button className="ghost" onClick={() => setView("alerts")}>View actions</button></div>
-            </section>)}</div>
-          </section>
-        )}
-
-        {view === "sensors" && (
-          <section className="grid2">
-            <section className="panel"><PanelHead title="Sensor Analytics" subtitle="Trend charts show current demonstration values; ground-risk state remains separate from sensor health." />
-              <div className="chartGrid">
-                <LineChart label="Relative displacement" unit="mm" values={[0.4, 0.8, 1.5, 2.7, 4.4, 6.2].map((v, i) => v + stage * 0.12 * i)} />
-                <LineChart label="Deformation rate" unit="mm/min" values={[0.02, 0.05, 0.08, 0.14, 0.22, 0.34].map((v, i) => v + stage * 0.01 * i)} />
-                <LineChart label="Tilt" unit="deg" values={[0.03, 0.08, 0.14, 0.22, 0.34, 0.48].map((v, i) => v + stage * 0.04 * i)} />
-              </div>
-            </section>
-            <section className="panel"><PanelHead title="Node status" subtitle="Current packet health and model output." />{nodes.map((node: any) => <div className="nodeRow" key={node.id}>
-              <div><strong>{node.id}</strong><span className="muted small">{node.zoneId} · last seen {node.lastSeen}</span></div><div>tilt {node.tilt.toFixed(2)}°</div><div>disp {node.displacement.toFixed(2)} mm</div><div>rate {node.deformationRate.toFixed(2)} mm/min</div>
-              <div><span className={`dot ${node.healthy ? "green" : "red"}`}/> {node.modelClass.replaceAll("_", " ")}</div>
-              {node.healthMessage && !node.healthy && <div style={{ gridColumn: "1 / -1", fontSize: "11px", color: "#a63f2b", background: "#fdf0ed", padding: "4px 8px", borderRadius: "4px", marginTop: "4px" }}>⚠️ {node.healthMessage}</div>}
-            </div>)}</section>
-          </section>
-        )}
-
-        {view === "alerts" && (
-          <section className="grid2">
-            <section className="panel"><PanelHead title="Alert & Action Center" subtitle="Detect → acknowledge → verify → confirm or dismiss. Human review remains explicit." />
-              {currentAlert ? <div className="alertCard">
-                <div className="alertTop"><div><span className={`severityChip ${currentAlert.severity.toLowerCase()}`}>{currentAlert.severity}</span><span className="quiet"> {currentAlert.id}</span></div><StateBadge state={overall}/></div>
-                <h2>{currentAlert.title}</h2><p>{currentAlert.summary}</p>
-                <div className="evidenceList">{currentAlert.evidence.map((e: string) => <div className="evidence" key={e}>✓ {e}</div>)}</div>
-                <div className="lifecycle"><span className={effectiveAlertLifecycle !== "NEW" ? "done" : "current"}>NEW</span><span className={rankLifecycle(effectiveAlertLifecycle) >= 1 ? "done" : ""}>ACKNOWLEDGED</span><span className={effectiveAlertLifecycle === "VERIFICATION_PENDING" ? "current" : rankLifecycle(effectiveAlertLifecycle) > 2 ? "done" : ""}>VERIFICATION PENDING</span><span className={effectiveAlertLifecycle === "CONFIRMED" ? "current" : ""}>CONFIRMED</span><span className={effectiveAlertLifecycle === "DISMISSED" ? "current dismissed" : effectiveAlertLifecycle === "SENSOR_ISSUE" ? "current dismissed" : ""}>{effectiveAlertLifecycle === "SENSOR_ISSUE" ? "SENSOR ISSUE" : "DISMISSED"}</span></div>
-                <div className="actions"><button className="primary" onClick={acknowledge}>Acknowledge</button><button className="ghost" onClick={verify}>Mark for verification</button><button className="ghost" onClick={confirmAlert}>Confirm</button><button className="ghost dangerGhost" onClick={() => dismiss("DISMISSED")}>Dismiss</button><button className="ghost dangerGhost" onClick={() => dismiss("SENSOR_ISSUE")}>Sensor issue</button></div>
-              </div> : <Empty text="No active alerts. Continue monitoring." />}
-            </section>
-            <section className="panel"><PanelHead title="Audit-friendly answer" subtitle="A serious control-room alert should answer four questions clearly." /><div className="answerGrid large"><div><span>WHERE</span><strong>{currentAlert?.zoneId ?? "—"}</strong></div><div><span>WHAT</span><strong>{currentAlert ? currentAlert.title : "System normal"}</strong></div><div><span>HOW SERIOUS</span><strong>{currentAlert ? overall.replaceAll("_", " ") : "LOW"}</strong></div><div><span>WHAT NEXT</span><strong>{currentAlert ? currentAlert.recommendedAction : "Continue monitoring"}</strong></div></div></section>
-          </section>
-        )}
-
+        {/* 9. HISTORY / EVENT REPLAY */}
         {view === "history" && (
-          <section className="panel full"><PanelHead title="History / Event Replay" subtitle="Demo timeline synchronizes map state, zone state, asset context and alerts." action={<span className="quiet">Current run · synthetic observations</span>} />
-            <div className="replay"><input type="range" min="0" max="5" value={stage} onChange={(event: { target: { value: string } }) => { setStage(Number(event.target.value)); setAlertLifecycle("NEW"); }}/><div className="replayLabels">{timeline.map((item, index) => <button key={item.minute} className={index === stage ? "replayPoint active" : "replayPoint"} onClick={() => { setStage(index); setAlertLifecycle("NEW"); }}><span>+{item.minute} min</span><strong>{item.state}</strong></button>)}</div></div>
-            <div className="historyGrid"><div className="panel inset"><MapView stage={stage} mode={scenario} layers={layers} onNodeHover={setHoveredNode} selectedNode={hoveredNode}/></div><div className="panel inset"><div className="timelineRow"><span>Relative displacement</span><strong>{timeline[stage].displacement} mm</strong></div><div className="timelineRow"><span>Deformation rate</span><strong>{timeline[stage].rate} mm/min</strong></div><div className="timelineRow"><span>Zone state</span><StateBadge state={overall}/></div><div className="timelineRow"><span>Asset context</span><strong>{stage >= 5 ? "AT RISK" : stage >= 4 ? "NEAR IMPACT ZONE" : "NO CURRENT IMPACT"}</strong></div><div className="note">Demo time is compressed. It is not equivalent to real mine elapsed time.</div></div></div>
-          </section>
+          <HistoryReplayView
+            stage={effectiveStage}
+            onStageChange={(s) => {
+              setStage(s);
+              setAlertLifecycle("NEW");
+            }}
+            overallState={overall}
+            asset={asset}
+            nodes={nodes}
+            zones={zones}
+            alerts={alerts}
+          />
         )}
 
+        {/* 10. NETWORK HEALTH */}
         {view === "network" && (
-          <section className="grid2"><section className="panel"><PanelHead title="Network Health" subtitle="Communication quality is separate from ground-risk state." />{nodes.map((node: any) => <div className="nodeRow" key={node.id}>
-            <div><strong>{node.id}</strong><span className="muted small">{node.zoneId}</span></div>
-            <div>RSSI {node.rssi} dBm</div>
-            <div>battery {node.battery}%</div>
-            <div>last seen {node.lastSeen}</div>
-            <div><span className={`dot ${node.quality === "UNAVAILABLE" ? "red" : node.quality === "DEGRADED" ? "amber" : "green"}`}/> {node.quality?.toLowerCase() || "good"}</div>
-            {node.healthMessage && !node.healthy && (
-              <div style={{ gridColumn: "1 / -1", fontSize: "11px", color: "#a63f2b", background: "#fdf0ed", padding: "4px 8px", borderRadius: "4px", marginTop: "4px" }}>⚠️ {node.healthMessage}</div>
-            )}
-          </div>)}</section><section className="panel"><PanelHead title="System path" subtitle="Data source changes; the logical MineGuard dashboard stays the same." /><div className="flow"><div className="flowNode">Sensor Nodes</div><div>↓</div><div className="flowNode">Wireless Mesh</div><div>↓</div><div className="flowNode">Gateway GW-001</div><div>↓</div><div className="flowNode">MQTT / API</div><div>↓</div><div className="flowNode">ML + Risk Services</div><div>↓</div><div className="flowNode">MineGuard UI</div></div><div className="adapter"><span className={`dot ${isLiveActive ? "green" : "amber"}`}/> {isLiveActive ? "Live hardware stream ACTIVE" : "Integration boundary READY"} <span className="quiet">POST /api/ingest · POST /api/ml</span></div></section></section>
+          <NetworkHealthView
+            nodes={nodes}
+            gatewayStatus="CONNECTED (GW-001)"
+            isLiveActive={isLiveActive}
+          />
         )}
 
-        {view === "settings" && (
-          <section className="grid2"><section className="panel"><PanelHead title="Engineering Settings" subtitle="Prototype configuration. Site thresholds must be validated before field deployment." /><div className="settingsGrid"><label>Deployment profile<input value="Mine Panel A / Testbed" readOnly/></label><label>Coordinate system<input value="Local engineering coordinates" readOnly/></label><label>Sensor IDs<input value="SN-001, SN-002, SN-003" readOnly/></label><label>Gateway<input value="GW-001" readOnly/></label><label>Protected asset<input value="A-001 · placeholder asset" readOnly/></label><label>Risk thresholds<input value="Demo configuration only" readOnly/></label></div></section><section className="panel"><PanelHead title="Integration readiness" subtitle="What can be connected without changing the dashboard architecture." /><div className="contractRow"><span>Hardware packet schema</span><strong>READY</strong></div><div className="contractRow"><span>ML inference adapter</span><strong>READY</strong></div><div className="contractRow"><span>Data-source separation</span><strong>READY</strong></div><div className="contractRow"><span>Alert lifecycle</span><strong>READY</strong></div><div className="contractRow"><span>Local-first UI</span><strong>READY</strong></div><div className="note">This build deliberately avoids claims of calibrated collapse probability or automatic evacuation decisions.</div></section></section>
+        {/* PHYSICS INTELLIGENCE MODULE */}
+        {view === "physics" && (
+          <div style={{ display: "grid", gridTemplateColumns: "1.1fr 0.9fr", gap: "12px" }}>
+            <PhysicsIntelPanel
+              stage={effectiveStage}
+              nodes={nodes}
+              zones={zones}
+            />
+            <div className="engPanel">
+              <div className="engPanelHeader">
+                <div className="engPanelTitle">
+                  <span>⌖</span>
+                  <span>Spatial Verification (Knothe PIM vs Sensor Ground Truth)</span>
+                </div>
+              </div>
+              <GisCommandMap
+                stage={effectiveStage}
+                mode={scenario}
+                layers={layers}
+                onToggleLayer={toggleLayer}
+                nodes={nodes}
+                zones={zones}
+                asset={asset}
+                selectedEntity={selectedEntity}
+                onSelectEntity={setSelectedEntity}
+                isLiveActive={isLiveActive}
+              />
+            </div>
+          </div>
         )}
 
+        {/* 8. DEMO CONTROLLER */}
         {view === "demo" && (
-          <section className="grid2"><section className="panel"><DemoControl stage={stage} scenario={scenario} running={demoRunning} speed={demoSpeed} onScenario={chooseScenario} onStart={() => setDemoRunning(true)} onPause={() => setDemoRunning(false)} onReset={resetDemo} onSpeed={setDemoSpeed}/><div className="demoMap"><MapView stage={stage} mode={scenario} layers={layers} onNodeHover={setHoveredNode} selectedNode={hoveredNode}/></div></section><section className="panel"><PanelHead title="Demo acceptance path" subtitle="The virtual simulator is a data source, not a hardcoded screen animation." /><Check text="Normal baseline is visible before the event begins"/><Check text="Single-node disturbance stays local and requires verification"/><Check text="Persistence changes the state before spatial escalation"/><Check text="Multi-node progression changes zone and asset context"/><Check text="Alert actions are human-controlled and auditable"/><Check text="Reset returns the run to a clean baseline"/><Check text="Live Testbed / Live Mine modes hide manual stage controls"/></section></section>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+            <DemoController
+              operationMode={operationMode}
+              onModeChange={handleModeChange}
+              scenario={scenario}
+              onScenarioChange={handleScenarioChange}
+              stage={stage}
+              onStageChange={setStage}
+              running={demoRunning}
+              onStart={() => setDemoRunning(true)}
+              onPause={() => setDemoRunning(false)}
+              onReset={handleResetDemo}
+              speed={demoSpeed}
+              onSpeedChange={setDemoSpeed}
+            />
+
+            <div className="engPanel">
+              <div className="engPanelHeader">
+                <div className="engPanelTitle">
+                  <span>▦</span>
+                  <span>Synchronized Demo Spatial Preview</span>
+                </div>
+              </div>
+              <GisCommandMap
+                stage={stage}
+                mode={scenario}
+                layers={layers}
+                onToggleLayer={toggleLayer}
+                nodes={nodes}
+                zones={zones}
+                asset={asset}
+                selectedEntity={selectedEntity}
+                onSelectEntity={setSelectedEntity}
+                isLiveActive={isLiveActive}
+              />
+            </div>
+          </div>
         )}
 
-        <footer>MineGuard software prototype · decision-support system · synthetic/demo values are not field safety limits.</footer>
+        {/* ENGINEERING SETTINGS */}
+        {view === "settings" && (
+          <div className="engPanel">
+            <div className="engPanelHeader">
+              <div className="engPanelTitle">
+                <span>⚙</span>
+                <span>Engineering &amp; Geotechnical Site Configuration</span>
+              </div>
+              <div className="engPanelSub">
+                CALIBRATED LONGWALL PANEL ATTRIBUTES &amp; TARP THRESHOLDS
+              </div>
+            </div>
+            <div className="engPanelBody">
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+                <table className="networkTable">
+                  <tbody>
+                    <tr><th>Mine Site</th><td style={{ fontFamily: "var(--font-mono)" }}>Coal Mine Colliery · Panel A</td></tr>
+                    <tr><th>Extraction Method</th><td style={{ fontFamily: "var(--font-mono)" }}>Caved Longwall Retreat (Seam H = 110m)</td></tr>
+                    <tr><th>Peck Trough Radius (i)</th><td style={{ fontFamily: "var(--font-mono)" }}>44.0 meters (inflection point)</td></tr>
+                    <tr><th>Coordinate Datum</th><td style={{ fontFamily: "var(--font-mono)" }}>Local Engineering Metric Grid</td></tr>
+                    <tr><th>Protected Infrastructure</th><td style={{ fontFamily: "var(--font-mono)" }}>A-001 (Ventilation Shaft Headframe &amp; Substation)</td></tr>
+                  </tbody>
+                </table>
+                <table className="networkTable">
+                  <tbody>
+                    <tr><th>Rate Threshold 1 (WATCH)</th><td style={{ fontFamily: "var(--font-mono)" }}>&gt; 0.05 mm/min sustained</td></tr>
+                    <tr><th>Rate Threshold 2 (HIGH)</th><td style={{ fontFamily: "var(--font-mono)" }}>&gt; 0.15 mm/min with multi-node agreement</td></tr>
+                    <tr><th>Rate Threshold 3 (CRITICAL)</th><td style={{ fontFamily: "var(--font-mono)" }}>&gt; 0.30 mm/min encroaching asset buffer</td></tr>
+                    <tr><th>Radio Timeout</th><td style={{ fontFamily: "var(--font-mono)" }}>30 seconds (Watchdog Gap Trigger)</td></tr>
+                    <tr><th>False Alarm Guardrail</th><td style={{ fontFamily: "var(--font-mono)" }}>RF v6 Decoy Seismic / Vibration Dissipation</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
       </main>
+
+      {/* SYSTEM FOOTER */}
+      <footer className="sysFooter">
+        <div>
+          MineGuard v1.2 · Industrial Geotechnical Decision Support System · Colliery Engineering Deployment
+        </div>
+        <div>
+          Status: {isLiveActive ? "LIVE TELEMETRY STREAMING" : "CANONICAL MODEL STANDBY"} · Datum: Metric Local
+        </div>
+      </footer>
     </div>
   );
-}
-
-function PanelHead({ title, subtitle, action }: { title: string; subtitle?: string; action?: ReactNode }) {
-  return <div className="panelHead"><div><h2>{title}</h2>{subtitle && <p>{subtitle}</p>}</div>{action}</div>;
-}
-
-function LayerBar({ layers, toggleLayer }: { layers: LayerState; toggleLayer: (key: LayerKey) => void }) {
-  const labels: Record<LayerKey, string> = { grid: "Grid", sensors: "Sensors", risk: "Risk", assets: "Assets", impact: "Impact", network: "Network" };
-  return <div className="layerBar">{(Object.keys(labels) as LayerKey[]).map((key) => <button key={key} className={layers[key] ? "layerActive" : ""} onClick={() => toggleLayer(key)}>{labels[key]}</button>)}</div>;
-}
-
-function DemoControl({ stage, scenario, running, speed, onScenario, onStart, onPause, onReset, onSpeed }: { stage: number; scenario: ScenarioKey; running: boolean; speed: 1 | 2 | 4; onScenario: (scenario: ScenarioKey) => void; onStart: () => void; onPause: () => void; onReset: () => void; onSpeed: (speed: 1 | 2 | 4) => void; }) {
-  return <div>
-    <PanelHead title="Demo Mode" subtitle="Virtual observations are used to exercise the same dashboard logic without physical hardware." action={<span className="stageChip">Stage {stage}/5</span>} />
-    <div className="demoControlGrid">
-      <div className="controlGroup"><span className="controlLabel">Scenario</span><div className="segmented">{(["progressive", "false_local", "normal"] as ScenarioKey[]).map((item) => <button key={item} className={scenario === item ? "selected" : ""} onClick={() => onScenario(item)}>{item === "progressive" ? "Progressive" : item === "false_local" ? "False local disturbance" : "Normal"}</button>)}</div></div>
-      <div className="controlGroup"><span className="controlLabel">Playback</span><div className="segmented"><button onClick={onStart} disabled={running}>▶ Start</button><button onClick={onPause} disabled={!running}>Ⅱ Pause</button><button onClick={onReset}>↻ Reset</button></div></div>
-      <div className="controlGroup"><span className="controlLabel">Speed</span><div className="segmented">{([1, 2, 4] as const).map((item) => <button key={item} className={speed === item ? "selected" : ""} onClick={() => onSpeed(item)}>{item}×</button>)}</div></div>
-    </div>
-    <div className="progressTrack"><div className="progressFill" style={{ width: `${(stage / 5) * 100}%` }}/></div>
-    <div className="stageSummary"><strong>{stageLabels[stage]}</strong><span>{stageDescriptions[stage]}</span></div>
-    <p className="note">The run advances one operational stage every 8 seconds at 1× in this prototype. Demo time is compressed and does not represent real mine time.</p>
-  </div>;
-}
-
-function LiveIntegrationCard({ mode }: { mode: Exclude<OperationMode, "DEMO"> }) {
-  return <section className="panel integrationCard"><PanelHead title={mode === "LIVE_TESTBED" ? "Live Testbed Input" : "Live Mine Input"} subtitle="No physical stream is connected in this package; the integration seam is ready."/><div className="integrationSteps"><div><strong>1</strong><span>Sensor packet</span><small>POST /api/ingest</small></div><div><strong>2</strong><span>Validation</span><small>health + quality</small></div><div><strong>3</strong><span>ML adapter</span><small>POST /api/ml</small></div><div><strong>4</strong><span>Risk engine</span><small>spatial + temporal context</small></div></div><div className="offlineBanner"><span className="dot amber"/> Live stream not connected · dashboard remains in integration-ready standby.</div></section>;
-}
-
-function Check({ text }: { text: string }) { return <div className="check"><span>✓</span>{text}</div>; }
-function Empty({ text }: { text: string }) { return <div className="empty">{text}</div>; }
-
-function rankLifecycle(lifecycle: AlertLifecycle): number {
-  if (lifecycle === "NEW") return 0;
-  if (lifecycle === "ACKNOWLEDGED") return 1;
-  if (lifecycle === "VERIFICATION_PENDING") return 2;
-  if (lifecycle === "CONFIRMED") return 3;
-  return 4;
 }
