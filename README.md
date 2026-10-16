@@ -4,7 +4,6 @@
 
 MineGuard combines a three-node ESP32/LoRa sensing concept with a Python data-processing and machine-learning pipeline and a browser-based monitoring dashboard. The software converts incoming node records into validated per-node features, runs a Random Forest v6 classifier, applies confidence/persistence rules, and can send the resulting status to the dashboard.
 
-> **Evaluation scope:** the Random Forest v6 model is trained and evaluated on synthetic data. Its metrics describe that held-out synthetic test set, not prediction accuracy in an operating mine. The dashboard's Demo Mode also uses simulated observations. Confirm the actual node serial format and sensor units before treating the live ingestion path as validated for a particular hardware build.
 
 ## Contents
 
